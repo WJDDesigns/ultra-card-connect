@@ -4,6 +4,7 @@
   "description": "Home Assistant integration for Ultra Card Pro Cloud authentication",
   "main": "deploy.js",
   "scripts": {
+    "version:update": "node update-version.js",
     "deploy": "node deploy.js"
   },
   "keywords": [

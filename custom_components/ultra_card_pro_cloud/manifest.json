@@ -1,7 +1,9 @@
 {
   "domain": "ultra_card_pro_cloud",
   "name": "Ultra Card Pro Cloud",
-  "codeowners": ["@WJDDesigns"],
+  "codeowners": [
+    "@WJDDesigns"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/WJDDesigns/ultra-card-pro-cloud",
@@ -9,6 +11,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/WJDDesigns/ultra-card-pro-cloud/issues",
   "requirements": [],
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
-

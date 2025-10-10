@@ -168,6 +168,58 @@ Each HA user can have their own Ultra Card Pro Cloud integration configured:
 
 Each user will see their own PRO features based on their subscription.
 
+## 👨‍💻 Development
+
+### Version Management
+
+This integration uses a **single source of truth** for version numbers:
+
+**To change the version:**
+
+1. Edit `version.py` (in the **root folder**):
+
+   ```python
+   __version__ = "1.0.1"  # Change this
+   ```
+
+2. Sync to manifest (**REQUIRED before deploying**):
+
+   ```bash
+   npm run version:update
+   ```
+
+3. Deploy:
+   ```bash
+   npm run deploy
+   ```
+
+You have **full manual control** - the deploy script does NOT auto-update the version.
+
+See [VERSION_GUIDE.md](VERSION_GUIDE.md) for detailed documentation.
+
+### Local Development
+
+```bash
+# Install dependencies (none required, pure Python + Node deploy script)
+npm install
+
+# Update version across all files
+npm run version:update
+
+# Deploy to local Home Assistant
+npm run deploy
+```
+
+## 📝 Changelog
+
+### Version 1.0.1
+
+- **Reduced console logging** - Removed excess debug logging for cleaner output
+
+### Version 1.0.0
+
+- Initial release with cloud authentication and auto-refresh
+
 ## 🤝 Support
 
 - **Issues:** [GitHub Issues](https://github.com/WJDDesigns/ultra-card-pro-cloud/issues)

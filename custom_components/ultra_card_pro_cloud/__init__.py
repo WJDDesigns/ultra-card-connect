@@ -16,6 +16,20 @@ from .const import (
 )
 from .coordinator import UltraCardProCloudCoordinator
 
+# Read version from root version.py file
+import os
+__version__ = "1.0.0"
+try:
+    version_file = os.path.join(os.path.dirname(__file__), "..", "..", "version.py")
+    if os.path.exists(version_file):
+        with open(version_file) as f:
+            for line in f:
+                if line.startswith("__version__"):
+                    __version__ = line.split("=")[1].strip().strip('"').strip("'")
+                    break
+except Exception:
+    pass  # Fall back to default version
+
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]  # Sensor platform for authentication status
@@ -24,13 +38,13 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]  # Sensor platform for authenticat
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Ultra Card Pro Cloud component."""
     # For config flow integrations, this is called but domain setup happens in async_setup_entry
-    _LOGGER.info("Ultra Card Pro Cloud component setup called")
+    _LOGGER.info("Ultra Card Pro Cloud v%s component setup called", __version__)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ultra Card Pro Cloud from a config entry."""
-    _LOGGER.info("Starting Ultra Card Pro Cloud integration setup for entry: %s", entry.entry_id)
+    _LOGGER.info("Starting Ultra Card Pro Cloud v%s integration setup for entry: %s", __version__, entry.entry_id)
     
     # Initialize domain in hass.data - this is critical for frontend access
     hass.data.setdefault(DOMAIN, {})
