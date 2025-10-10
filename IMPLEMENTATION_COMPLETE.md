@@ -97,7 +97,7 @@ We've successfully built a **production-ready Home Assistant integration** that 
 │ ✅ PRO Features Unlocked via Ultra Card Pro    │
 │    Cloud                                       │
 │                                                │
-│ Wayne Drescher (wayne@example.com)            │
+│ WJD Designs                                   │
 │ Subscription: PRO ⭐                           │
 │                                                │
 │ All your devices are automatically unlocked.   │

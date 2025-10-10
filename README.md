@@ -180,7 +180,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## 🙏 Credits
 
-Created by [Wayne Drescher](https://github.com/WJDDesigns) for the Home Assistant community.
+Created by [WJD Designs](https://github.com/WJDDesigns) for the Home Assistant community.
 
 Uses [ultracard.io](https://ultracard.io) authentication API.
 
