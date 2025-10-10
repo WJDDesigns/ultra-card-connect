@@ -1,0 +1,21 @@
+{
+  "name": "ultra-card-pro-cloud",
+  "version": "1.0.0",
+  "description": "Home Assistant integration for Ultra Card Pro Cloud authentication",
+  "main": "deploy.js",
+  "scripts": {
+    "deploy": "node deploy.js"
+  },
+  "keywords": [
+    "homeassistant",
+    "integration",
+    "ultra-card",
+    "authentication"
+  ],
+  "author": "Wayne Drescher",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WJDDesigns/ultra-card-pro-cloud.git"
+  }
+}

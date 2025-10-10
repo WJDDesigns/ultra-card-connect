@@ -1,0 +1,14 @@
+{
+  "entity": {
+    "sensor": {
+      "auth_status": {
+        "default": "mdi:cloud-off",
+        "state": {
+          "connected": "mdi:cloud-check",
+          "disconnected": "mdi:cloud-off",
+          "authenticating": "mdi:cloud-sync"
+        }
+      }
+    }
+  }
+}

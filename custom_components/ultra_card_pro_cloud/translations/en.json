@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Ultra Card Pro Cloud",
+        "description": "Enter your ultracard.io credentials to unlock PRO features on all your devices.",
+        "data": {
+          "username": "Username or Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Ultra Card Pro Cloud",
+        "description": "Your credentials need to be updated. Please enter your current ultracard.io login.",
+        "data": {
+          "username": "Username or Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password. Please check your credentials.",
+      "cannot_connect": "Cannot connect to ultracard.io. Please check your internet connection and try again.",
+      "unknown": "An unexpected error occurred. Please try again."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Reauthentication successful!"
+    }
+  }
+}
+
