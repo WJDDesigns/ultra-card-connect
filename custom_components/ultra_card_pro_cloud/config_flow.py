@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 from typing import Any
 
 import aiohttp
@@ -24,6 +25,11 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Constants for retry logic
+MAX_RETRIES = 3
+RETRY_DELAY = 2  # seconds
+RATE_LIMIT_DELAY = 5  # seconds
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
@@ -38,41 +44,100 @@ async def validate_auth(
     """Validate the user credentials."""
     session = async_get_clientsession(hass)
     url = f"{API_BASE_URL}{JWT_ENDPOINT}/token"
+    
+    _LOGGER.debug("🔐 Validating auth for user: %s", username)
 
-    try:
-        async with session.post(
-            url,
-            json={"username": username, "password": password},
-            timeout=aiohttp.ClientTimeout(total=10),
-        ) as response:
-            if response.status == 401 or response.status == 403:
-                raise InvalidAuth
+    for attempt in range(MAX_RETRIES):
+        try:
+            async with session.post(
+                url,
+                json={"username": username, "password": password},
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as response:
+                response_text = await response.text()
+                _LOGGER.debug("📥 Auth response status: %s", response.status)
+                _LOGGER.debug("📥 Auth response (first 500 chars): %s", response_text[:500])
+                
+                # Handle rate limiting (JWT Auth Pro feature)
+                if response.status == 429:
+                    retry_after = int(response.headers.get("Retry-After", RATE_LIMIT_DELAY))
+                    _LOGGER.warning("⏳ Rate limited, waiting %s seconds before retry (attempt %d/%d)", 
+                                   retry_after, attempt + 1, MAX_RETRIES)
+                    await asyncio.sleep(retry_after)
+                    continue
+                
+                # Handle auth failures
+                if response.status == 401 or response.status == 403:
+                    _LOGGER.error("❌ Authentication failed: Invalid credentials (status %s)", response.status)
+                    raise InvalidAuth
+                
+                # JWT Auth Pro may return 202 for async operations
+                if response.status == 202:
+                    _LOGGER.debug("⏳ Got 202 Accepted, retrying (attempt %d/%d)", 
+                                 attempt + 1, MAX_RETRIES)
+                    await asyncio.sleep(2)
+                    continue
 
-            if response.status != 200:
-                _LOGGER.error("Authentication failed with status: %s", response.status)
-                raise CannotConnect
+                # Accept any 2xx status as success
+                if not (200 <= response.status < 300):
+                    _LOGGER.error("❌ Authentication failed with status: %s - %s", 
+                                 response.status, response_text[:200])
+                    if attempt < MAX_RETRIES - 1:
+                        _LOGGER.info("🔄 Retrying in %s seconds (attempt %d/%d)", 
+                                    RETRY_DELAY * (attempt + 1), attempt + 1, MAX_RETRIES)
+                        await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                        continue
+                    raise CannotConnect
 
-            data = await response.json()
-            
-            # Validate response structure
-            if not data.get("token"):
-                raise InvalidAuth
+                # Parse the response
+                try:
+                    import json
+                    data = json.loads(response_text)
+                except json.JSONDecodeError as e:
+                    _LOGGER.error("❌ Failed to parse auth response: %s", e)
+                    raise CannotConnect from e
+                
+                # JWT Auth Pro response format - check for token in various locations
+                token = (
+                    data.get("token") or 
+                    data.get("data", {}).get("token") or
+                    data.get("jwt_token") or
+                    data.get("access_token")
+                )
+                
+                if not token:
+                    _LOGGER.error("❌ No token in response. Keys: %s", list(data.keys()))
+                    raise InvalidAuth
 
-            return {
-                "user_id": data.get("user_id"),
-                "username": data.get("user_nicename", username),
-                "email": data.get("user_email"),
-                "display_name": data.get("user_display_name", username),
-            }
+                _LOGGER.debug("✅ Credentials validated for user: %s", username)
+                
+                return {
+                    "user_id": data.get("user_id") or data.get("data", {}).get("user_id"),
+                    "username": data.get("user_nicename") or data.get("data", {}).get("user_nicename") or username,
+                    "email": data.get("user_email") or data.get("data", {}).get("user_email"),
+                    "display_name": data.get("user_display_name") or data.get("data", {}).get("user_display_name") or username,
+                }
 
-    except aiohttp.ClientError as err:
-        _LOGGER.error("Connection error: %s", err)
-        raise CannotConnect from err
-    except InvalidAuth:
-        raise
-    except Exception as err:
-        _LOGGER.exception("Unexpected error during authentication: %s", err)
-        raise CannotConnect from err
+        except aiohttp.ClientError as err:
+            _LOGGER.error("❌ Connection error (attempt %d/%d): %s", attempt + 1, MAX_RETRIES, err)
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                continue
+            raise CannotConnect from err
+        except InvalidAuth:
+            raise
+        except CannotConnect:
+            raise
+        except Exception as err:
+            _LOGGER.exception("❌ Unexpected error during authentication: %s", err)
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                continue
+            raise CannotConnect from err
+    
+    # If we get here, all retries failed
+    _LOGGER.error("❌ Authentication failed after %d attempts", MAX_RETRIES)
+    raise CannotConnect
 
 
 class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -98,17 +163,20 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(user_input[CONF_USERNAME].lower())
                 self._abort_if_unique_id_configured()
 
+                _LOGGER.debug("✅ Creating config entry for user: %s", info['username'])
                 return self.async_create_entry(
                     title=f"Ultra Card Pro ({info['username']})",
                     data=user_input,
                 )
 
             except InvalidAuth:
+                _LOGGER.warning("⚠️ Invalid credentials provided")
                 errors["base"] = ERROR_INVALID_AUTH
             except CannotConnect:
+                _LOGGER.warning("⚠️ Cannot connect to ultracard.io")
                 errors["base"] = ERROR_CANNOT_CONNECT
             except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
+                _LOGGER.exception("❌ Unexpected exception during config flow")
                 errors["base"] = ERROR_UNKNOWN
 
         return self.async_show_form(
@@ -144,14 +212,17 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if entry:
                     self.hass.config_entries.async_update_entry(entry, data=user_input)
                     await self.hass.config_entries.async_reload(entry.entry_id)
+                    _LOGGER.debug("✅ Re-authentication successful")
                     return self.async_abort(reason="reauth_successful")
 
             except InvalidAuth:
+                _LOGGER.warning("⚠️ Invalid credentials during re-auth")
                 errors["base"] = ERROR_INVALID_AUTH
             except CannotConnect:
+                _LOGGER.warning("⚠️ Cannot connect to ultracard.io during re-auth")
                 errors["base"] = ERROR_CANNOT_CONNECT
             except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
+                _LOGGER.exception("❌ Unexpected exception during re-auth")
                 errors["base"] = ERROR_UNKNOWN
 
         return self.async_show_form(
@@ -167,4 +238,3 @@ class CannotConnect(Exception):
 
 class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
-

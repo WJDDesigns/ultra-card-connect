@@ -44,14 +44,24 @@ Install this integration once, and **every device automatically has PRO features
 
 ### HACS (Recommended)
 
+**🎉 Now available directly in HACS!**
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=WJDDesigns&repository=ultra-card-pro-cloud&category=integration)
+
 1. Open **HACS** in Home Assistant
 2. Click **Integrations**
-3. Click the **⋮** menu → **Custom repositories**
-4. Add repository: `https://github.com/WJDDesigns/ultra-card-pro-cloud`
-5. Category: **Integration**
-6. Click **Add**
-7. Find **"Ultra Card Pro Cloud"** and click **Download**
-8. **Restart Home Assistant**
+3. Search for **"Ultra Card Pro Cloud"**
+4. Click **Download**
+5. **Restart Home Assistant**
+
+_Or add manually:_
+
+1. Click the **⋮** menu → **Custom repositories**
+2. Add repository: `https://github.com/WJDDesigns/ultra-card-pro-cloud`
+3. Category: **Integration**
+4. Click **Add**
+5. Find **"Ultra Card Pro Cloud"** and click **Download**
+6. **Restart Home Assistant**
 
 ### Manual Installation
 
@@ -211,6 +221,17 @@ npm run deploy
 ```
 
 ## 📝 Changelog
+
+### Version 1.0.2
+
+- **JWT Authentication Pro compatibility** - Full support for JWT Auth Pro plugin with token refresh mechanism
+- **Fixed token expiry detection** - Now correctly parses JWT token expiry from the token itself (supports 180+ day tokens)
+- **Fixed 202 status handling** - Properly handles HTTP 202 "Accepted" responses from JWT Auth Pro
+- **Added rate limiting support** - Handles HTTP 429 responses with proper retry-after delays
+- **Added retry logic** - Automatic retries with exponential backoff for transient failures
+- **Improved token refresh** - Better handling of refresh tokens with JWT Auth Pro format
+- **Reduced logging noise** - Routine polling now uses debug level (quiet logs in production)
+- **Better error recovery** - Clears stale tokens after 3 consecutive failures to force fresh authentication
 
 ### Version 1.0.1
 
