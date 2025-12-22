@@ -1,0 +1,39 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: false
+          body: |
+            ## What's Changed in ${{ github.ref_name }}
+            
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+            
+            ### Installation
+            
+            **Via HACS (Recommended):**
+            1. Open HACS in Home Assistant
+            2. Search for "Ultra Card Pro Cloud"
+            3. Click Install
+            4. Restart Home Assistant
+            
+            **Manual Installation:**
+            1. Download the `custom_components/ultra_card_pro_cloud` folder
+            2. Copy to your Home Assistant `config/custom_components/` directory
+            3. Restart Home Assistant
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
