@@ -31,6 +31,11 @@ RETRY_DELAY = 2  # seconds
 RATE_LIMIT_DELAY = 5  # seconds for 429 responses
 DEFAULT_TOKEN_EXPIRY_DAYS = 180  # Match JWT Auth Pro default
 
+# Connection settings
+USER_AGENT = "HomeAssistant/UltraCardProCloud/1.0"
+REQUEST_TIMEOUT = 30  # Total timeout in seconds
+CONNECT_TIMEOUT = 10  # Connection establishment timeout
+
 
 def parse_jwt_expiry(token: str) -> int | None:
     """Parse the expiry timestamp from a JWT token.
@@ -69,6 +74,22 @@ def parse_jwt_expiry(token: str) -> int | None:
     except Exception as e:
         _LOGGER.debug("Failed to parse JWT expiry: %s", e)
         return None
+
+
+def _get_timeout() -> aiohttp.ClientTimeout:
+    """Get standard timeout configuration."""
+    return aiohttp.ClientTimeout(total=REQUEST_TIMEOUT, connect=CONNECT_TIMEOUT)
+
+
+def _get_headers(token: str | None = None) -> dict[str, str]:
+    """Get standard request headers with User-Agent."""
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 class UltraCardProCloudCoordinator(DataUpdateCoordinator):
@@ -155,21 +176,106 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("✅ Data update successful")
             return result
 
-        except Exception as err:
+        except aiohttp.ClientConnectorError as err:
+            # DNS resolution failed or connection refused
             self._auth_failure_count += 1
-            _LOGGER.error("❌ Error communicating with Ultra Card API: %s", err)
+            _LOGGER.error(
+                "❌ Connection error to Ultra Card API: %s "
+                "(This is usually a DNS or network issue - verify ultracard.io is reachable from your HA instance)",
+                err
+            )
+            return {
+                "authenticated": False,
+                "error": f"Connection failed: Unable to reach ultracard.io - {err}",
+                "error_type": "connection",
+            }
+        except aiohttp.ClientSSLError as err:
+            # SSL/TLS certificate issues
+            self._auth_failure_count += 1
+            _LOGGER.error(
+                "❌ SSL/TLS error connecting to Ultra Card API: %s "
+                "(Certificate validation failed - this may be a network proxy or firewall issue)",
+                err
+            )
+            return {
+                "authenticated": False,
+                "error": f"SSL certificate error: {err}",
+                "error_type": "ssl",
+            }
+        except asyncio.TimeoutError:
+            # Request timed out
+            self._auth_failure_count += 1
+            _LOGGER.error(
+                "❌ Timeout connecting to Ultra Card API "
+                "(Server did not respond within %d seconds - check your internet connection or try again later)",
+                REQUEST_TIMEOUT
+            )
+            return {
+                "authenticated": False,
+                "error": f"Connection timed out after {REQUEST_TIMEOUT} seconds",
+                "error_type": "timeout",
+            }
+        except aiohttp.ServerDisconnectedError as err:
+            # Server closed connection unexpectedly
+            self._auth_failure_count += 1
+            _LOGGER.error(
+                "❌ Server disconnected during request: %s "
+                "(The server closed the connection - this may be temporary, try again)",
+                err
+            )
+            return {
+                "authenticated": False,
+                "error": f"Server disconnected: {err}",
+                "error_type": "disconnected",
+            }
+        except aiohttp.ClientResponseError as err:
+            # HTTP error response
+            self._auth_failure_count += 1
+            _LOGGER.error(
+                "❌ HTTP error from Ultra Card API: %s %s",
+                err.status, err.message
+            )
+            return {
+                "authenticated": False,
+                "error": f"HTTP {err.status}: {err.message}",
+                "error_type": "http_error",
+            }
+        except UpdateFailed as err:
+            # Our own UpdateFailed exceptions
+            self._auth_failure_count += 1
+            _LOGGER.error("❌ Update failed: %s", err)
             
             # If we've failed multiple times, clear tokens to force re-auth
             if self._auth_failure_count >= 3:
-                _LOGGER.warning("⚠️ Multiple auth failures, clearing tokens for fresh start")
+                _LOGGER.warning("⚠️ Multiple auth failures (%d), clearing tokens for fresh start", self._auth_failure_count)
                 self._jwt_token = None
                 self._refresh_token = None
                 self._token_expires_at = 0
             
-            # Return unauthenticated state instead of raising
             return {
                 "authenticated": False,
                 "error": str(err),
+                "error_type": "update_failed",
+            }
+        except Exception as err:
+            # Catch-all for unexpected errors
+            self._auth_failure_count += 1
+            _LOGGER.error(
+                "❌ Unexpected error communicating with Ultra Card API: %s (%s)",
+                err, type(err).__name__
+            )
+            
+            # If we've failed multiple times, clear tokens to force re-auth
+            if self._auth_failure_count >= 3:
+                _LOGGER.warning("⚠️ Multiple auth failures (%d), clearing tokens for fresh start", self._auth_failure_count)
+                self._jwt_token = None
+                self._refresh_token = None
+                self._token_expires_at = 0
+            
+            return {
+                "authenticated": False,
+                "error": f"{type(err).__name__}: {err}",
+                "error_type": "unknown",
             }
 
     async def _authenticate(self) -> None:
@@ -187,7 +293,8 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 async with self.session.post(
                     url,
                     json={"username": username, "password": password},
-                    timeout=aiohttp.ClientTimeout(total=15),
+                    headers=_get_headers(),
+                    timeout=_get_timeout(),
                 ) as response:
                     response_text = await response.text()
                     _LOGGER.debug("📥 Auth response status: %s", response.status)
@@ -305,11 +412,14 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         try:
             # JWT Auth Pro expects the refresh token in Authorization header as Bearer token
             # OR in the request body - we'll try both approaches
+            headers = _get_headers()
+            headers["Authorization"] = f"Bearer {self._refresh_token}"
+            
             async with self.session.post(
                 url,
                 json={"refresh_token": self._refresh_token},
-                headers={"Authorization": f"Bearer {self._refresh_token}"},
-                timeout=aiohttp.ClientTimeout(total=15),
+                headers=headers,
+                timeout=_get_timeout(),
             ) as response:
                 response_text = await response.text()
                 _LOGGER.debug("📥 Refresh response status: %s", response.status)
@@ -398,8 +508,8 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             try:
                 async with self.session.get(
                     url,
-                    headers={"Authorization": f"Bearer {self._jwt_token}"},
-                    timeout=aiohttp.ClientTimeout(total=15),
+                    headers=_get_headers(self._jwt_token),
+                    timeout=_get_timeout(),
                 ) as response:
                     response_text = await response.text()
                     _LOGGER.debug("📥 User profile response status: %s", response.status)
@@ -458,8 +568,8 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             try:
                 async with self.session.get(
                     url,
-                    headers={"Authorization": f"Bearer {self._jwt_token}"},
-                    timeout=aiohttp.ClientTimeout(total=15),
+                    headers=_get_headers(self._jwt_token),
+                    timeout=_get_timeout(),
                 ) as response:
                     response_text = await response.text()
                     _LOGGER.debug("📥 Subscription response status: %s", response.status)
@@ -505,6 +615,85 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         
         raise UpdateFailed("Failed to fetch subscription after all retries")
 
+    async def async_test_connectivity(self) -> dict[str, Any]:
+        """Test connectivity to ultracard.io for diagnostics.
+        
+        Returns a dict with test results for each stage:
+        - dns: Whether DNS resolution succeeded
+        - ssl: Whether SSL/TLS handshake succeeded
+        - api: Whether the API responded
+        - auth: Whether authentication works (if credentials provided)
+        """
+        results = {
+            "dns": False,
+            "ssl": False,
+            "api": False,
+            "auth": False,
+            "errors": [],
+        }
+        
+        # Test 1: Basic connectivity (DNS + SSL)
+        try:
+            async with self.session.get(
+                "https://ultracard.io/",
+                timeout=aiohttp.ClientTimeout(total=10, connect=5),
+                headers={"User-Agent": USER_AGENT},
+            ) as resp:
+                results["dns"] = True
+                results["ssl"] = True
+                if resp.status < 500:
+                    results["api"] = True
+                else:
+                    results["errors"].append(f"Server returned status {resp.status}")
+        except aiohttp.ClientConnectorError as e:
+            results["errors"].append(f"DNS/Connection failed: {e}")
+        except aiohttp.ClientSSLError as e:
+            results["dns"] = True  # DNS worked if we got to SSL
+            results["errors"].append(f"SSL/TLS failed: {e}")
+        except asyncio.TimeoutError:
+            results["errors"].append("Connection timed out")
+        except Exception as e:
+            results["errors"].append(f"Unexpected error: {type(e).__name__}: {e}")
+        
+        # Test 2: API endpoint accessibility
+        if results["ssl"]:
+            try:
+                url = f"{API_BASE_URL}{JWT_ENDPOINT}"
+                async with self.session.get(
+                    url,
+                    timeout=aiohttp.ClientTimeout(total=10, connect=5),
+                    headers={"User-Agent": USER_AGENT},
+                ) as resp:
+                    # JWT endpoint should return 405 for GET (method not allowed) or 200
+                    # Either indicates the API is reachable
+                    if resp.status in (200, 405, 401):
+                        results["api"] = True
+                    else:
+                        results["errors"].append(f"API endpoint returned unexpected status {resp.status}")
+            except Exception as e:
+                results["errors"].append(f"API test failed: {type(e).__name__}: {e}")
+        
+        # Test 3: Authentication (if we have credentials)
+        if results["api"] and self._jwt_token:
+            results["auth"] = True
+        elif results["api"]:
+            try:
+                # Try to authenticate
+                await self._authenticate()
+                if self._jwt_token:
+                    results["auth"] = True
+            except Exception as e:
+                results["errors"].append(f"Authentication test failed: {e}")
+        
+        _LOGGER.info(
+            "🔍 Connectivity test results - DNS: %s, SSL: %s, API: %s, Auth: %s",
+            results["dns"], results["ssl"], results["api"], results["auth"]
+        )
+        if results["errors"]:
+            _LOGGER.warning("⚠️ Connectivity test errors: %s", results["errors"])
+        
+        return results
+
     async def async_logout(self) -> None:
         """Logout and invalidate tokens."""
         _LOGGER.debug("🚪 Logging out from Ultra Card Pro Cloud")
@@ -521,7 +710,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 try:
                     async with self.session.post(
                         url,
-                        headers={"Authorization": f"Bearer {self._jwt_token}"},
+                        headers=_get_headers(self._jwt_token),
                         timeout=aiohttp.ClientTimeout(total=5),
                     ) as response:
                         if 200 <= response.status < 300:
