@@ -2,6 +2,18 @@
 
 All notable changes to Ultra Card Pro Cloud will be documented in this file.
 
+## [1.0.4] - 2024-12-23
+
+### Fixed
+- **Config Flow Connection Issues**: Updated `config_flow.py` with the same connection improvements as coordinator - was still using old 15s timeout and missing User-Agent headers
+- **asyncio.CancelledError Handling**: Added specific handling for cancelled/interrupted requests during setup
+- Users experiencing timeouts during initial setup should now have more reliable connections
+
+### Improved
+- Config flow now uses 30s timeout (was 15s) with 10s connect timeout
+- Added User-Agent headers to config flow requests
+- Better error messages for DNS, SSL, timeout, and connection issues during setup
+
 ## [1.0.3] - 2024-12-22
 
 ### Improved

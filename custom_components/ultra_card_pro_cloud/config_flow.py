@@ -30,12 +30,31 @@ MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds
 RATE_LIMIT_DELAY = 5  # seconds
 
+# Connection settings (match coordinator.py)
+USER_AGENT = "HomeAssistant/UltraCardProCloud/1.0"
+REQUEST_TIMEOUT = 30  # Total timeout in seconds
+CONNECT_TIMEOUT = 10  # Connection establishment timeout
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
     }
 )
+
+
+def _get_timeout() -> aiohttp.ClientTimeout:
+    """Get standard timeout configuration."""
+    return aiohttp.ClientTimeout(total=REQUEST_TIMEOUT, connect=CONNECT_TIMEOUT)
+
+
+def _get_headers() -> dict[str, str]:
+    """Get standard request headers with User-Agent."""
+    return {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
 
 
 async def validate_auth(
@@ -52,7 +71,8 @@ async def validate_auth(
             async with session.post(
                 url,
                 json={"username": username, "password": password},
-                timeout=aiohttp.ClientTimeout(total=15),
+                headers=_get_headers(),
+                timeout=_get_timeout(),
             ) as response:
                 response_text = await response.text()
                 _LOGGER.debug("📥 Auth response status: %s", response.status)
@@ -118,6 +138,55 @@ async def validate_auth(
                     "display_name": data.get("user_display_name") or data.get("data", {}).get("user_display_name") or username,
                 }
 
+        except aiohttp.ClientConnectorError as err:
+            _LOGGER.error(
+                "❌ Connection error (attempt %d/%d): %s "
+                "(DNS or network issue - verify ultracard.io is reachable)",
+                attempt + 1, MAX_RETRIES, err
+            )
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                continue
+            raise CannotConnect from err
+        except aiohttp.ClientSSLError as err:
+            _LOGGER.error(
+                "❌ SSL/TLS error (attempt %d/%d): %s "
+                "(Certificate issue - may be proxy/firewall related)",
+                attempt + 1, MAX_RETRIES, err
+            )
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                continue
+            raise CannotConnect from err
+        except asyncio.TimeoutError:
+            _LOGGER.error(
+                "❌ Connection timed out (attempt %d/%d) "
+                "(Server did not respond within %d seconds)",
+                attempt + 1, MAX_RETRIES, REQUEST_TIMEOUT
+            )
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                continue
+            raise CannotConnect
+        except asyncio.CancelledError:
+            _LOGGER.error(
+                "❌ Request was cancelled (attempt %d/%d) "
+                "(Connection interrupted - may be network instability)",
+                attempt + 1, MAX_RETRIES
+            )
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                continue
+            raise CannotConnect
+        except aiohttp.ServerDisconnectedError as err:
+            _LOGGER.error(
+                "❌ Server disconnected (attempt %d/%d): %s",
+                attempt + 1, MAX_RETRIES, err
+            )
+            if attempt < MAX_RETRIES - 1:
+                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
+                continue
+            raise CannotConnect from err
         except aiohttp.ClientError as err:
             _LOGGER.error("❌ Connection error (attempt %d/%d): %s", attempt + 1, MAX_RETRIES, err)
             if attempt < MAX_RETRIES - 1:
@@ -129,7 +198,7 @@ async def validate_auth(
         except CannotConnect:
             raise
         except Exception as err:
-            _LOGGER.exception("❌ Unexpected error during authentication: %s", err)
+            _LOGGER.exception("❌ Unexpected error during authentication (%s): %s", type(err).__name__, err)
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(RETRY_DELAY * (attempt + 1))
                 continue
