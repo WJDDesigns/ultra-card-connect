@@ -1,11 +1,15 @@
 {
   "name": "ultra-card-pro-cloud",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Home Assistant integration for Ultra Card Pro Cloud authentication",
   "main": "deploy.js",
   "scripts": {
+    "build": "node build.js",
+    "build:release": "node build.js --release",
+    "build:deploy": "npm run build && npm run deploy",
+    "deploy": "node deploy.js",
     "version:update": "node update-version.js",
-    "deploy": "node deploy.js"
+    "release": "npm run build:release"
   },
   "keywords": [
     "homeassistant",

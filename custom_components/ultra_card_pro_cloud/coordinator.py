@@ -26,7 +26,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Constants for retry logic
-MAX_RETRIES = 3
+MAX_RETRIES = 2  # Reduced from 3 to minimize traffic on failures
 RETRY_DELAY = 2  # seconds
 RATE_LIMIT_DELAY = 5  # seconds for 429 responses
 DEFAULT_TOKEN_EXPIRY_DAYS = 180  # Match JWT Auth Pro default

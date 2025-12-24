@@ -7,6 +7,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+release/
 
 # IDEs
 .vscode/
@@ -31,9 +32,6 @@ htmlcov/
 .env
 *.local
 
-# Personal/local deployment tools (do not commit)
-deploy.js
-deploy-fix.sh
-DEPLOY_NOW.md
-DEPLOYMENT_GUIDE.md
+# Node modules (if any)
+node_modules/
 

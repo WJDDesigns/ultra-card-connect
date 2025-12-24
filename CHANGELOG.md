@@ -2,6 +2,16 @@
 
 All notable changes to Ultra Card Pro Cloud will be documented in this file.
 
+## [1.0.5] - 2024-12-24
+
+### Fixed
+- **Critical: Removed duplicate Content-Type header** - aiohttp sets this automatically with `json=`, having it explicitly caused some servers/CDNs to reject requests
+- **Critical: Fixed asyncio.CancelledError handling** - Was incorrectly catching and converting to CannotConnect, preventing proper task cancellation during HA restarts
+- **Reduced retry count from 3 to 2** - Reduces traffic load when connections fail (was causing 3x traffic spikes)
+
+### Note
+If you experienced connection issues with v1.0.3/v1.0.4 but older versions worked, this release should fix it.
+
 ## [1.0.4] - 2024-12-23
 
 ### Fixed

@@ -26,7 +26,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Constants for retry logic
-MAX_RETRIES = 3
+MAX_RETRIES = 2  # Reduced from 3 to minimize traffic on failures
 RETRY_DELAY = 2  # seconds
 RATE_LIMIT_DELAY = 5  # seconds
 
@@ -50,10 +50,10 @@ def _get_timeout() -> aiohttp.ClientTimeout:
 
 def _get_headers() -> dict[str, str]:
     """Get standard request headers with User-Agent."""
+    # Note: Don't set Content-Type here - aiohttp sets it automatically with json=
     return {
         "User-Agent": USER_AGENT,
         "Accept": "application/json",
-        "Content-Type": "application/json",
     }
 
 
@@ -169,15 +169,9 @@ async def validate_auth(
                 continue
             raise CannotConnect
         except asyncio.CancelledError:
-            _LOGGER.error(
-                "❌ Request was cancelled (attempt %d/%d) "
-                "(Connection interrupted - may be network instability)",
-                attempt + 1, MAX_RETRIES
-            )
-            if attempt < MAX_RETRIES - 1:
-                await asyncio.sleep(RETRY_DELAY * (attempt + 1))
-                continue
-            raise CannotConnect
+            # Don't catch CancelledError - let it propagate for proper task cancellation
+            _LOGGER.debug("Request cancelled (HA shutting down or task cancelled)")
+            raise
         except aiohttp.ServerDisconnectedError as err:
             _LOGGER.error(
                 "❌ Server disconnected (attempt %d/%d): %s",
