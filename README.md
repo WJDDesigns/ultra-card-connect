@@ -3,38 +3,56 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/WJDDesigns/ultra-card-connect.svg)](https://github.com/WJDDesigns/ultra-card-connect/releases)
 
-> **Required for all Ultra Card users.** Install once to get the Ultra Card sidebar in Home Assistant — and if you have a Pro subscription, it syncs automatically to every device.
+> **Required for all Ultra Card users.** Install once to get the Ultra Card Hub sidebar in Home Assistant. Pro subscribers also get their subscription synced automatically across every device.
 
-This Home Assistant integration connects your HA instance to [ultracard.io](https://ultracard.io), adds the **Ultra Card Hub** sidebar panel, and — for Pro subscribers — automatically unlocks Pro features on every device connected to your Home Assistant.
+This Home Assistant integration connects your HA instance to [ultracard.io](https://ultracard.io), adds the **Ultra Card Hub** sidebar panel available to everyone, and — for Pro subscribers — automatically unlocks Pro features on every device connected to your Home Assistant.
 
 ---
 
 ## ✨ What You Get
 
 ### All Users (Free & Pro)
-- **Ultra Card Sidebar (Hub)** — access Favorites, Presets, Colors, Variables, and Templates directly from the HA sidebar on any device
-- **Single install** — configure once, works everywhere your Home Assistant is open
+
+Installing Ultra Card Connect adds the **Ultra Card Hub** to your Home Assistant sidebar — a dedicated panel with everything you need to manage your Ultra Cards across all your dashboards:
+
+- **Favorites** — save your most-used card configurations for quick access
+- **Presets** — community and custom presets to style your cards instantly
+- **Colors** — manage your color palette across all cards
+- **Variables** — create global variables reusable across all your cards
+- **Templates** — manage and reuse Jinja templates
+- **Dashboard** — see stats across all your dashboards at a glance
+- **Pro** — view your subscription status and unlock Pro features
 
 ### Pro Subscribers
+
 Everything above, plus:
-- **Auto-sync Pro features** — desktop, mobile, tablet, TV — all unlocked automatically
-- **Login Once** — no more logging in separately on each device
-- **Auto-Refresh** — token refreshes automatically, never expires
-- **Dashboard Snapshots** — full backup and restore of your dashboards
+
+- **Auto-sync Pro features** — desktop, mobile, tablet, TV — all unlocked automatically with one login
+- **No per-device login** — no more signing in separately on every browser or device
+- **Auto-Refresh** — token refreshes automatically every 55 minutes, never expires
+- **Dashboard Snapshots** — full backup and restore of your entire dashboard layout
 - **Cloud Backup** — 30 manual backups across all your cards
+- **Priority Support** — Discord support for Pro members
 
 ---
 
 ## ❓ Why This Integration Exists
 
-### Without It
-- No Ultra Card sidebar in Home Assistant
-- Pro users must log in separately on every device
-- Sessions expire and require re-login on each device
+### The Problem
 
-### With It
-- The Ultra Card Hub sidebar is available on every device ✅
-- Pro subscribers get features unlocked everywhere automatically ✅
+Without Ultra Card Connect:
+
+- There is **no Ultra Card Hub sidebar** — Favorites, Presets, Colors, and Variables are not accessible outside of the card editor
+- Pro users must log in separately on every device (desktop, phone, tablet, TV)
+- Sessions expire and require re-login each time on each device
+
+### The Solution
+
+Install Ultra Card Connect once and:
+
+- The **Ultra Card Hub sidebar appears on every device** connected to your Home Assistant ✅
+- **Free users** get full access to Favorites, Presets, Colors, Variables, and Templates in the sidebar ✅
+- **Pro subscribers** get all of the above plus their subscription synced across every device automatically ✅
 - Set it and forget it ✅
 
 ---
@@ -45,9 +63,9 @@ Open your Home Assistant and add this repository in HACS:
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=WJDDesigns&repository=ultra-card-connect&category=integration)
 
-**Or manually:**
+**Or search manually in HACS:**
 
-1. Open HACS in Home Assistant
+1. Open **HACS** in Home Assistant
 2. Click **Integrations**
 3. Search for **"Ultra Card Connect"**
 4. Click **Download**
@@ -55,39 +73,43 @@ Open your Home Assistant and add this repository in HACS:
 
 **Or add as a custom repository:**
 
-1. Click the ⋮ menu → **Custom repositories**
-2. Add: `https://github.com/WJDDesigns/ultra-card-connect`
+1. Open HACS → click the ⋮ menu → **Custom repositories**
+2. Add URL: `https://github.com/WJDDesigns/ultra-card-connect`
 3. Category: **Integration**
-4. Click **Add**, find **Ultra Card Connect**, click **Download**
-5. Restart Home Assistant
+4. Click **Add**
+5. Find **Ultra Card Connect** and click **Download**
+6. Restart Home Assistant
 
 ---
 
 ## ⚙️ Configuration
 
 ### Initial Setup
+
 1. Go to **Settings → Devices & Services**
 2. Click **+ Add Integration**
 3. Search for **"Ultra Card Connect"**
-4. Enter your [ultracard.io](https://ultracard.io) username/email
+4. Enter your [ultracard.io](https://ultracard.io) username or email
 5. Enter your password
 6. Click **Submit**
 
-✅ Done! The Ultra Card sidebar is now active on all your devices.
+✅ Done! The Ultra Card Hub sidebar is now active on all your devices.
 
 ### Verify It's Working
-- Open any dashboard — you should see the **Ultra Card Hub** entry in the sidebar
-- Open the Hub → click the **Pro** tab
-- Free users: see Pro features and upgrade options
-- Pro users: see "Connected via Ultra Card Connect" with your subscription details
+
+1. Look for **Ultra Card** in your Home Assistant sidebar — click it to open the Hub
+2. Open the **Pro** tab inside the Hub
+   - **Free users:** you'll see your account details and Pro upgrade options
+   - **Pro subscribers:** you'll see "Connected via Ultra Card Connect" with your active subscription details
+3. Open the Hub on your phone, tablet, or another browser — it's already there ✅
 
 ---
 
 ## 📋 Requirements
 
-- Home Assistant 2024.1.0 or newer
-- A [ultracard.io](https://ultracard.io) account (free or Pro)
-- Ultra Card installed via HACS
+- Home Assistant **2024.1.0** or newer
+- A [ultracard.io](https://ultracard.io) account — free accounts are supported
+- **Ultra Card** installed via HACS (the card, not just this integration)
 
 ---
 
@@ -101,14 +123,14 @@ Open your Home Assistant and add this repository in HACS:
 │  │  • Authenticates with ultracard.io        │ │
 │  │  • Manages JWT tokens automatically       │ │
 │  │  • Refreshes every 55 minutes             │ │
-│  │  • Adds Ultra Card Hub sidebar panel      │ │
-│  │  • Exposes auth state via hass.data       │ │
+│  │  • Adds Ultra Card Hub to the sidebar     │ │
+│  │  • Exposes subscription state to cards    │ │
 │  └───────────────────────────────────────────┘ │
 │              ↓                                   │
 │  ┌───────────────────────────────────────────┐ │
 │  │ Ultra Card (on any device)                │ │
-│  │  • Hub sidebar available to all users     │ │
-│  │  • Checks subscription for Pro features   │ │
+│  │  • Hub sidebar visible to all users       │ │
+│  │  • Reads subscription tier automatically  │ │
 │  │  • Unlocks Pro features if subscribed     │ │
 │  └───────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────┘
@@ -121,54 +143,61 @@ Open your Home Assistant and add this repository in HACS:
 **Technical Details**
 - Authentication: Uses ultracard.io JWT API (`/jwt-auth/v1/token`)
 - Token Refresh: Automatic every 55 minutes (before 1-hour expiry)
-- Data Exposure: Integration exposes auth state in `hass.data["ultra_card_pro_cloud"]`
-- Card Detection: Ultra Card checks for the integration on load and updates when state changes
+- Grace Period: Pro access maintained for 24 hours if server is temporarily unreachable
 - Security: Credentials encrypted in HA config entry, tokens stored in memory only
+- Card Detection: Ultra Card reads subscription state automatically on load
 
 ---
 
 ## 🔄 Updates & Maintenance
 
 ### Automatic Updates via HACS
-Once installed via HACS, you'll automatically be notified of updates. Click **Update** when available.
+
+Once installed via HACS, you'll be notified of updates automatically. Click **Update** when available — no reinstall or reconfiguration needed.
 
 ### Reauthentication
+
 If you change your ultracard.io password:
+
 1. Go to **Settings → Devices & Services**
 2. Find **Ultra Card Connect**
 3. Click **Configure**
-4. Enter new credentials and click **Submit**
+4. Enter your new credentials
+5. Click **Submit**
 
 ---
 
 ## 🐛 Troubleshooting
 
 ### Sidebar Not Appearing
-1. Verify the integration is loaded: **Settings → Devices & Services → Ultra Card Connect** shows "Loaded"
-2. Hard refresh your browser (Ctrl+Shift+R / Cmd+Shift+R)
-3. Check logs: **Settings → System → Logs**, search for `ultra_card_pro_cloud`
+
+1. Verify the integration is loaded: **Settings → Devices & Services → Ultra Card Connect** — it should show as "Loaded"
+2. Hard refresh your browser: **Ctrl+Shift+R** (Windows/Linux) or **Cmd+Shift+R** (Mac)
+3. Check logs: **Settings → System → Logs** — search for `ultra_card_pro_cloud`
+4. If still missing, try removing and re-adding the integration, then restart Home Assistant
 
 ### Pro Features Not Unlocking
-1. Open the Hub sidebar → **Pro** tab — check your subscription status
-2. Verify it shows "Connected via Ultra Card Connect" with an active Pro subscription
-3. Check logs for `ultra_card_pro_cloud` errors
+
+1. Open the Hub sidebar → click the **Pro** tab
+2. Verify it shows "Connected via Ultra Card Connect" with subscription status **PRO / Active**
+3. If it shows your account but the wrong tier, your subscription may have expired — check at [ultracard.io](https://ultracard.io)
+4. Check logs for `ultra_card_pro_cloud` error messages
 
 ### Common Issues
-- ❌ **Invalid credentials** — verify username/password at [ultracard.io](https://ultracard.io)
-- ❌ **No internet connection** — check HA can reach ultracard.io
-- ❌ **Integration shows "Failed to Setup"** — check logs, try removing and re-adding
 
-### Integration Shows "Failed to Setup"
-1. Check Home Assistant logs for errors
-2. Verify ultracard.io is accessible: `https://ultracard.io/wp-json/jwt-auth/v1/`
-3. Try removing and re-adding the integration
-4. Restart Home Assistant
+- ❌ **Invalid credentials** — verify your username and password at [ultracard.io](https://ultracard.io)
+- ❌ **Cannot connect** — check that Home Assistant can reach the internet and that ultracard.io is accessible
+- ❌ **Integration shows "Failed to Setup"** — check HA logs, verify `https://ultracard.io/wp-json/jwt-auth/v1/` is reachable, try removing and re-adding
+
+### Existing Users After the Rename
+
+If you had "Ultra Card Pro Cloud" installed before this rename, **nothing breaks**. The internal domain (`ultra_card_pro_cloud`) and sensor entity (`sensor.ultra_card_pro_cloud_authentication_status`) are unchanged. You will simply receive a HACS update notification — click Update, restart Home Assistant, and you're done.
 
 ---
 
 ## 👨‍👩‍👧‍👦 Multiple HA Users
 
-Each HA user can have their own Ultra Card Connect integration configured with their own ultracard.io credentials. Each user will see their own subscription status in the Hub sidebar.
+Each Home Assistant user account can have its own Ultra Card Connect integration configured with separate ultracard.io credentials. Each user sees their own Hub sidebar and their own subscription status independently.
 
 ---
 
@@ -179,11 +208,13 @@ Each HA user can have their own Ultra Card Connect integration configured with t
 This integration uses a single source of truth for version numbers.
 
 To change the version, edit `version.py` in the root folder:
+
 ```python
-__version__ = "1.0.8"  # Change this
+__version__ = "1.0.9"  # Change this
 ```
 
 Then sync to manifest (required before deploying):
+
 ```bash
 npm run version:update
 npm run deploy
@@ -218,3 +249,5 @@ MIT License — see [LICENSE](LICENSE) file for details.
 Created by [WJD Designs](https://github.com/WJDDesigns) for the Home Assistant community.
 
 Uses the [ultracard.io](https://ultracard.io) authentication API.
+
+If Ultra Card Connect makes your life easier, consider upgrading to Pro to support continued development! ❤️
