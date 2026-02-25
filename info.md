@@ -1,41 +1,35 @@
-# Ultra Card Pro Cloud
+# Ultra Card Connect
 
-Unlock Ultra Card PRO features across **all your devices** with a single login!
+**Required for all Ultra Card users** — install this integration once to unlock the Ultra Card sidebar (Hub) in your Home Assistant. Pro subscribers also get their subscription automatically synced across every device.
 
-## What This Does
+## What You Get
 
-Once configured, this integration authenticates your Home Assistant instance with ultracard.io. **Every device** connected to your HA instance automatically gets PRO features - desktop, mobile, tablets, TVs - without logging in on each device.
-
-## Benefits
-
-✅ **Login once, works everywhere** - Configure once in HA, all devices unlock automatically  
-✅ **Automatic token refresh** - Never expires, never need to re-login  
-✅ **More secure** - Credentials stored in HA config, not browser localStorage  
-✅ **Zero maintenance** - Set it and forget it  
-✅ **Perfect for families** - Each HA user can have their own subscription
+✅ **Ultra Card Sidebar** — Favorites, Presets, Colors, Variables, Templates, and more — available to everyone  
+✅ **Login Once** — Configure once in Home Assistant, works on every device automatically  
+✅ **Automatic Token Refresh** — Never expires, never need to re-login  
+✅ **More Secure** — Credentials stored in HA config, not browser localStorage  
+✅ **Pro Sync** — Pro subscribers get features unlocked across desktop, mobile, tablet, and TV
 
 ## Setup (30 seconds)
 
-1. Click **"Add Integration"**
-2. Enter your ultracard.io username and password
-3. Click **Submit**
-4. ✨ **Done!** All your devices now have PRO features
+1. Click **"Download"** in HACS
+2. Restart Home Assistant
+3. Go to **Settings → Devices & Services → Add Integration**
+4. Search for **"Ultra Card Connect"**
+5. Enter your [ultracard.io](https://ultracard.io) username and password
+6. Click **Submit** — done!
 
 ## Requirements
 
-- Active Ultra Card PRO subscription at [ultracard.io](https://ultracard.io)
 - Home Assistant 2024.1.0 or newer
-- Ultra Card (any version) installed via HACS
-
-## How It Works
-
-The integration maintains a secure connection with ultracard.io, manages authentication tokens automatically, and exposes your PRO subscription status to the Ultra Card. The card checks for the integration on load and unlocks PRO features if authenticated.
+- A [ultracard.io](https://ultracard.io) account (free or Pro)
+- Ultra Card installed via HACS
 
 ## Support
 
-- **Issues:** [GitHub Issues](https://github.com/WJDDesigns/ultra-card-pro-cloud/issues)
-- **Documentation:** [Full README](https://github.com/WJDDesigns/ultra-card-pro-cloud)
-- **Get PRO:** [ultracard.io](https://ultracard.io)
+- **Issues:** [GitHub Issues](https://github.com/WJDDesigns/ultra-card-connect/issues)
+- **Documentation:** [Full README](https://github.com/WJDDesigns/ultra-card-connect)
+- **Get Pro:** [ultracard.io](https://ultracard.io)
 
 ---
 

@@ -1,6 +1,20 @@
 # Changelog
 
-All notable changes to Ultra Card Pro Cloud will be documented in this file.
+All notable changes to Ultra Card Connect will be documented in this file.
+
+## [1.0.9] - 2026-02-25
+
+### Changed
+- **Renamed to Ultra Card Connect** — The integration was previously called "Ultra Card Pro Cloud". The new name better reflects that this integration is required for **all Ultra Card users**, not just Pro subscribers.
+- **Required for all users** — All Ultra Card users now need this integration installed to access the Ultra Card Hub sidebar (Favorites, Presets, Colors, Variables, Templates). Pro subscribers continue to get their subscription synced across all devices automatically.
+- **Updated HACS display name** — Now appears as "Ultra Card Connect" in HACS search.
+- **Updated setup screen** — The Home Assistant integration setup flow now clearly states the integration is for all users.
+- **Updated README and info panel** — Documentation rewritten to reflect the new name, new purpose, and clear instructions for both free and Pro users.
+- **Updated GitHub repository URL** — Repository moved to `https://github.com/WJDDesigns/ultra-card-connect`.
+
+### Notes
+- **No breaking changes** — The internal domain (`ultra_card_pro_cloud`) and sensor entity (`sensor.ultra_card_pro_cloud_authentication_status`) are unchanged. Existing installs continue to work without any action required.
+- **Existing HACS installs** — Users who have the integration installed will receive this as a normal HACS update notification.
 
 ## [1.0.8] - 2026-02-25
 

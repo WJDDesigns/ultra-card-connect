@@ -1,4 +1,4 @@
-"""Constants for the Ultra Card Pro Cloud integration."""
+"""Constants for the Ultra Card Connect integration."""
 
 DOMAIN = "ultra_card_pro_cloud"
 

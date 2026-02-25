@@ -2,15 +2,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to Ultra Card Pro Cloud",
-        "description": "Enter your ultracard.io credentials to unlock PRO features on all your devices. This integration also adds an Ultra Card item to the sidebar (Hub) where you can view favorites, presets, and colors.",
+        "title": "Set Up Ultra Card Connect",
+        "description": "Install once to add the Ultra Card sidebar to Home Assistant — available to all users. Pro subscribers also get their subscription synced automatically across every device. Enter your ultracard.io credentials to get started.",
         "data": {
           "username": "Username or Email",
           "password": "Password"
         }
       },
       "reauth_confirm": {
-        "title": "Reauthenticate Ultra Card Pro Cloud",
+        "title": "Reauthenticate Ultra Card Connect",
         "description": "Your credentials need to be updated. Please enter your current ultracard.io login.",
         "data": {
           "username": "Username or Email",

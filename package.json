@@ -1,7 +1,7 @@
 {
   "name": "ultra-card-pro-cloud",
   "version": "1.0.1",
-  "description": "Home Assistant integration for Ultra Card Pro Cloud authentication",
+  "description": "Home Assistant integration for Ultra Card Connect — sidebar and Pro authentication",
   "main": "deploy.js",
   "scripts": {
     "build": "node build.js",
@@ -21,6 +21,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/WJDDesigns/ultra-card-pro-cloud.git"
+    "url": "https://github.com/WJDDesigns/ultra-card-connect.git"
   }
 }

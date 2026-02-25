@@ -1,15 +1,15 @@
 {
   "domain": "ultra_card_pro_cloud",
-  "name": "Ultra Card Pro Cloud",
+  "name": "Ultra Card Connect",
   "codeowners": [
     "@WJDDesigns"
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/WJDDesigns/ultra-card-pro-cloud",
+  "documentation": "https://github.com/WJDDesigns/ultra-card-connect",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/WJDDesigns/ultra-card-pro-cloud/issues",
+  "issue_tracker": "https://github.com/WJDDesigns/ultra-card-connect/issues",
   "requirements": [],
-  "version": "1.0.8"
+  "version": "1.0.9"
 }
