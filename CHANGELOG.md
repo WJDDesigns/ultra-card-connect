@@ -2,6 +2,11 @@
 
 All notable changes to Ultra Card Pro Cloud will be documented in this file.
 
+## [1.0.8] - 2026-02-25
+
+### Fixed
+- **Sidebar panel now actually loads** – v1.0.7 registered the static path using HA's deprecated synchronous API which silently fails on HA 2024.x+. Now uses `async_register_static_paths` (the correct modern API), with a fallback to the legacy method for older HA versions. Users who saw the "Unable to load custom panel" error after updating to v1.0.7 should update to this version.
+
 ## [1.0.7] - 2026-02-25
 
 ### Fixed

@@ -53,13 +53,22 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     www_path = Path(__file__).parent / "www"
     if www_path.exists() and not hass.data.get(f"{DOMAIN}_static_registered"):
         try:
-            hass.http.register_static_path(
-                PANEL_STATIC_URL_PATH,
-                str(www_path),
-                cache_headers=True,
-            )
+            # Use the modern async API (HA 2024.x+). Falls back to the legacy
+            # synchronous method for older installations.
+            from homeassistant.components.http import StaticPathConfig
+            await hass.http.async_register_static_paths([
+                StaticPathConfig(PANEL_STATIC_URL_PATH, str(www_path), cache_headers=True),
+            ])
             hass.data[f"{DOMAIN}_static_registered"] = True
             _LOGGER.info("Registered static path %s → %s", PANEL_STATIC_URL_PATH, www_path)
+        except (ImportError, AttributeError):
+            # Fallback for HA versions that don't have async_register_static_paths
+            try:
+                hass.http.register_static_path(PANEL_STATIC_URL_PATH, str(www_path), cache_headers=True)
+                hass.data[f"{DOMAIN}_static_registered"] = True
+                _LOGGER.info("Registered static path (legacy) %s → %s", PANEL_STATIC_URL_PATH, www_path)
+            except Exception as static_err:
+                _LOGGER.warning("Could not register static path for panel JS: %s", static_err)
         except Exception as static_err:
             _LOGGER.warning("Could not register static path for panel JS: %s", static_err)
     elif not www_path.exists():
