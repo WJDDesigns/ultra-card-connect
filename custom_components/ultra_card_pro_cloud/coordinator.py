@@ -21,6 +21,7 @@ from .const import (
     TOKEN_REFRESH_INTERVAL,
     CONF_USERNAME,
     CONF_PASSWORD,
+    GRACE_PERIOD_HOURS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,6 +36,9 @@ DEFAULT_TOKEN_EXPIRY_DAYS = 180  # Match JWT Auth Pro default
 USER_AGENT = "HomeAssistant/UltraCardProCloud/1.0"
 REQUEST_TIMEOUT = 30  # Total timeout in seconds
 CONNECT_TIMEOUT = 10  # Connection establishment timeout
+
+# Grace period - calculated from hours constant
+GRACE_PERIOD_SECONDS = GRACE_PERIOD_HOURS * 3600
 
 
 def parse_jwt_expiry(token: str) -> int | None:
@@ -92,6 +96,15 @@ def _get_headers(token: str | None = None) -> dict[str, str]:
     return headers
 
 
+def _format_grace_remaining(seconds_remaining: float) -> str:
+    """Format remaining grace period time in a human-readable way."""
+    hours = seconds_remaining / 3600
+    if hours >= 1:
+        return f"{hours:.1f} hours"
+    minutes = seconds_remaining / 60
+    return f"{minutes:.0f} minutes"
+
+
 class UltraCardProCloudCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Ultra Card Pro Cloud data."""
 
@@ -109,6 +122,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         self._token_expires_at: int = 0
         self._last_auth_attempt: float = 0
         self._auth_failure_count: int = 0
+        
+        # Grace period caching - maintains Pro access during server outages
+        self._last_successful_data: dict[str, Any] | None = None
+        self._last_successful_time: float = 0
 
         super().__init__(
             hass,
@@ -116,6 +133,30 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             name="Ultra Card Pro Cloud",
             update_interval=timedelta(seconds=TOKEN_REFRESH_INTERVAL),
         )
+
+    def _get_cached_data_if_valid(self) -> dict[str, Any] | None:
+        """Return cached auth data if within grace period, None otherwise.
+        
+        This allows Pro users to maintain access during temporary server outages.
+        """
+        if not self._last_successful_data or not self._last_successful_time:
+            return None
+        
+        grace_elapsed = time.time() - self._last_successful_time
+        grace_remaining = GRACE_PERIOD_SECONDS - grace_elapsed
+        
+        if grace_remaining > 0:
+            _LOGGER.warning(
+                "⏳ Server unreachable, using cached auth (%s remaining in grace period)",
+                _format_grace_remaining(grace_remaining)
+            )
+            return self._last_successful_data
+        
+        _LOGGER.warning(
+            "⚠️ Grace period expired (was %d hours), Pro access will be revoked",
+            GRACE_PERIOD_HOURS
+        )
+        return None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from API."""
@@ -173,6 +214,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             # Reset failure count on success
             self._auth_failure_count = 0
             
+            # Cache successful auth for grace period during future outages
+            self._last_successful_data = result.copy()
+            self._last_successful_time = time.time()
+            
             _LOGGER.debug("✅ Data update successful")
             return result
 
@@ -184,6 +229,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 "(This is usually a DNS or network issue - verify ultracard.io is reachable from your HA instance)",
                 err
             )
+            # Check for grace period - maintain Pro access during temporary outages
+            cached = self._get_cached_data_if_valid()
+            if cached:
+                return cached
             return {
                 "authenticated": False,
                 "error": f"Connection failed: Unable to reach ultracard.io - {err}",
@@ -197,6 +246,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 "(Certificate validation failed - this may be a network proxy or firewall issue)",
                 err
             )
+            # Check for grace period - maintain Pro access during temporary outages
+            cached = self._get_cached_data_if_valid()
+            if cached:
+                return cached
             return {
                 "authenticated": False,
                 "error": f"SSL certificate error: {err}",
@@ -210,6 +263,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 "(Server did not respond within %d seconds - check your internet connection or try again later)",
                 REQUEST_TIMEOUT
             )
+            # Check for grace period - maintain Pro access during temporary outages
+            cached = self._get_cached_data_if_valid()
+            if cached:
+                return cached
             return {
                 "authenticated": False,
                 "error": f"Connection timed out after {REQUEST_TIMEOUT} seconds",
@@ -223,6 +280,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 "(The server closed the connection - this may be temporary, try again)",
                 err
             )
+            # Check for grace period - maintain Pro access during temporary outages
+            cached = self._get_cached_data_if_valid()
+            if cached:
+                return cached
             return {
                 "authenticated": False,
                 "error": f"Server disconnected: {err}",
@@ -235,6 +296,11 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 "❌ HTTP error from Ultra Card API: %s %s",
                 err.status, err.message
             )
+            # Use grace period for 5xx server errors (not 4xx client errors)
+            if err.status >= 500:
+                cached = self._get_cached_data_if_valid()
+                if cached:
+                    return cached
             return {
                 "authenticated": False,
                 "error": f"HTTP {err.status}: {err.message}",

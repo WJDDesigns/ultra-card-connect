@@ -1,0 +1,28 @@
+# Ultra Card Hub - panel_custom for configuration.yaml
+# Use EITHER this OR the integration (not both with same url_path).
+#
+# OPTION A - Same folder as your card (config/www/community/Ultra-Card/):
+#   Copy dist/ultra-card-panel.js into that folder next to ultra-card.js,
+#   then use the URLs below.
+#
+# OPTION B - HACS: If Ultra Card card is from HACS, use the same base path
+#   as your ultra-card.js (e.g. /hacsfiles/Ultra-Card/ or /hacsfiles/ultra-card/).
+#
+# After editing configuration.yaml, restart Home Assistant.
+# Look for "Ultra Card" in the MAIN sidebar (Overview, Map, etc.).
+#
+panel_custom:
+  # Option A: panel in same folder as card (config/www/community/Ultra-Card/)
+  - name: ultra-card-panel
+    sidebar_title: Ultra Card
+    sidebar_icon: mdi:cards
+    url_path: ultra-card-hub
+    js_url: /local/community/Ultra-Card/ultra-card-panel.js
+    module_url: /local/community/Ultra-Card/ultra-card-panel.js
+  # Option B (comment out Option A and use this if you use HACS path instead):
+  # - name: ultra-card-panel
+  #   sidebar_title: Ultra Card
+  #   sidebar_icon: mdi:cards
+  #   url_path: ultra-card-hub
+  #   js_url: /hacsfiles/Ultra-Card/ultra-card-panel.js
+  #   module_url: /hacsfiles/Ultra-Card/ultra-card-panel.js

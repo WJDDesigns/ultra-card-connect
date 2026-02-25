@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to Ultra Card Pro Cloud",
-        "description": "Enter your ultracard.io credentials to unlock PRO features on all your devices.",
+        "description": "Enter your ultracard.io credentials to unlock PRO features on all your devices. This integration also adds an Ultra Card item to the sidebar (Hub) where you can view favorites, presets, and colors.",
         "data": {
           "username": "Username or Email",
           "password": "Password"

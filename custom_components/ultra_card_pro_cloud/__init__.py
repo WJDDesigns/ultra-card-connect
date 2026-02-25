@@ -13,6 +13,9 @@ from .const import (
     DOMAIN,
     DATA_COORDINATOR,
     DATA_AUTH,
+    PANEL_URL_PATH,
+    PANEL_JS_URL,
+    PANEL_CUSTOM_ELEMENT,
 )
 from .coordinator import UltraCardProCloudCoordinator
 
@@ -36,19 +39,47 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]  # Sensor platform for authenticat
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the Ultra Card Pro Cloud component."""
-    # For config flow integrations, this is called but domain setup happens in async_setup_entry
+    """Set up the Ultra Card Pro Cloud component. Registers the sidebar panel so it appears on install (no config entry required)."""
+    from homeassistant.components import frontend
+
     _LOGGER.info("Ultra Card Pro Cloud v%s component setup called", __version__)
+
+    # Register Ultra Card Hub sidebar panel so it appears as soon as the integration is installed via HACS (no config entry needed)
+    hass.data.setdefault(DOMAIN, {})
+    if not hass.data[DOMAIN].get("_panel_registered"):
+        try:
+            frontend.async_register_built_in_panel(
+                hass,
+                component_name="custom",
+                sidebar_title="Ultra Card",
+                sidebar_icon="mdi:cards",
+                sidebar_default_visible=True,
+                frontend_url_path=PANEL_URL_PATH,
+                config={
+                    "_panel_custom": {
+                        "name": PANEL_CUSTOM_ELEMENT,
+                        "js_url": PANEL_JS_URL,
+                        "module_url": PANEL_JS_URL,
+                        "embed_iframe": False,
+                        "trust_external": False,
+                    }
+                },
+                require_admin=False,
+            )
+            hass.data[DOMAIN]["_panel_registered"] = True
+            _LOGGER.info("Registered Ultra Card Hub panel at /%s (sidebar title: Ultra Card)", PANEL_URL_PATH)
+        except Exception as panel_err:
+            _LOGGER.exception("Could not register Ultra Card Hub panel: %s", panel_err)
+
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ultra Card Pro Cloud from a config entry."""
     _LOGGER.info("Starting Ultra Card Pro Cloud v%s integration setup for entry: %s", __version__, entry.entry_id)
-    
-    # Initialize domain in hass.data - this is critical for frontend access
+
+    # Initialize domain in hass.data - this is critical for frontend access (panel already registered in async_setup)
     hass.data.setdefault(DOMAIN, {})
-    _LOGGER.info("Domain %s initialized in hass.data", DOMAIN)
 
     try:
         session = async_get_clientsession(hass)
@@ -57,16 +88,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info("Attempting first data refresh...")
         await coordinator.async_config_entry_first_refresh()
 
-        # Log the coordinator data
         _LOGGER.info("Coordinator data after first refresh: %s", coordinator.data)
 
-        # Store coordinator in hass.data
         hass.data[DOMAIN][entry.entry_id] = {
             DATA_COORDINATOR: coordinator,
         }
 
-        # CRITICAL: Expose authentication data to the card via hass.data
-        # This is what the frontend will check
         if coordinator.data and coordinator.data.get("authenticated"):
             hass.data[DOMAIN][DATA_AUTH] = {
                 "authenticated": True,
@@ -85,23 +112,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             }
             _LOGGER.warning("⚠️ Authentication failed, exposing unauthenticated state")
 
-        # Log the exposed auth data for debugging
         _LOGGER.info("Final exposed auth data: %s", hass.data[DOMAIN][DATA_AUTH])
-
-        # Listen for coordinator updates to refresh exposed data
         coordinator.async_add_listener(_create_update_listener(hass, entry))
 
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
         _LOGGER.info("✅ Ultra Card Pro Cloud integration initialized successfully")
-
         return True
 
     except Exception as err:
-        _LOGGER.error("❌ Failed to setup Ultra Card Pro Cloud integration: %s", err)
-        # Ensure we still expose unauthenticated state even on error
+        _LOGGER.error("❌ Coordinator/sensor setup failed: %s", err)
         hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
-        raise
+        # Do not raise: panel is already registered; user can still use Hub and retry auth later
+        if entry.entry_id not in hass.data.get(DOMAIN, {}):
+            hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {}
+        return True
 
 
 def _create_update_listener(hass: HomeAssistant, entry: ConfigEntry):
@@ -139,7 +163,7 @@ def _create_update_listener(hass: HomeAssistant, entry: ConfigEntry):
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
+    """Unload a config entry. Panel stays registered (registered in async_setup) until integration is uninstalled."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
         # Clear exposed auth data
