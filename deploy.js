@@ -16,9 +16,40 @@ const CONFIG = {
     },
   ],
   sourceDir: "custom_components/ultra_card_pro_cloud",
+  // Path to ultra-card-panel.js built by the Ultra Card frontend project.
+  // Adjust this path if your Ultra Card repo lives elsewhere.
+  panelJsSrc:
+    process.env.ULTRA_CARD_PANEL_JS ||
+    path.resolve(__dirname, "../Ultra Card/dist/ultra-card-panel.js"),
 };
 
 console.log("🚀 Ultra Card Pro Cloud Integration Deployment\n");
+
+// Bundle ultra-card-panel.js into the integration's www/ folder so the sidebar
+// panel works without requiring the Ultra Card HACS frontend to be installed.
+function bundlePanelJs() {
+  const wwwDir = path.resolve(__dirname, CONFIG.sourceDir, "www");
+  const destFile = path.join(wwwDir, "ultra-card-panel.js");
+
+  if (!fs.existsSync(CONFIG.panelJsSrc)) {
+    console.warn(
+      `⚠️  ultra-card-panel.js not found at: ${CONFIG.panelJsSrc}\n` +
+        "   Build the Ultra Card project first (npm run build), or set\n" +
+        "   ULTRA_CARD_PANEL_JS env var to the correct path.\n" +
+        "   The integration will be deployed WITHOUT the panel JS.\n"
+    );
+    return false;
+  }
+
+  if (!fs.existsSync(wwwDir)) {
+    fs.mkdirSync(wwwDir, { recursive: true });
+  }
+
+  fs.copyFileSync(CONFIG.panelJsSrc, destFile);
+  const sizeKb = Math.round(fs.statSync(destFile).size / 1024);
+  console.log(`📦 Bundled ultra-card-panel.js → ${CONFIG.sourceDir}/www/ (${sizeKb} KB)\n`);
+  return true;
+}
 
 // Check if volume is mounted
 function isVolumeMounted() {
@@ -121,6 +152,9 @@ function deployIntegration(targetPath) {
 
 // Main deployment process
 async function deploy() {
+  // Bundle panel JS into integration www/ folder before deploying
+  bundlePanelJs();
+
   // Check if volume is mounted
   if (!isVolumeMounted()) {
     console.log("❌ Config volume not mounted at /Volumes/config");

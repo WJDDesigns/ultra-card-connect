@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -15,6 +16,7 @@ from .const import (
     DATA_AUTH,
     PANEL_URL_PATH,
     PANEL_JS_URL,
+    PANEL_STATIC_URL_PATH,
     PANEL_CUSTOM_ELEMENT,
 )
 from .coordinator import UltraCardProCloudCoordinator
@@ -43,6 +45,29 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     from homeassistant.components import frontend
 
     _LOGGER.info("Ultra Card Pro Cloud v%s component setup called", __version__)
+
+    # Serve ultra-card-panel.js from this integration's own www/ folder so the
+    # panel works regardless of whether the Ultra Card HACS frontend card is
+    # also installed. This eliminates the "Unable to load custom panel" error
+    # that occurs when the /hacsfiles/Ultra-Card/ path doesn't exist.
+    www_path = Path(__file__).parent / "www"
+    if www_path.exists() and not hass.data.get(f"{DOMAIN}_static_registered"):
+        try:
+            hass.http.register_static_path(
+                PANEL_STATIC_URL_PATH,
+                str(www_path),
+                cache_headers=True,
+            )
+            hass.data[f"{DOMAIN}_static_registered"] = True
+            _LOGGER.info("Registered static path %s → %s", PANEL_STATIC_URL_PATH, www_path)
+        except Exception as static_err:
+            _LOGGER.warning("Could not register static path for panel JS: %s", static_err)
+    elif not www_path.exists():
+        _LOGGER.warning(
+            "ultra-card-panel.js not found in %s — sidebar panel may fail to load. "
+            "Re-deploy the integration to include the www/ folder.",
+            www_path,
+        )
 
     # Register Ultra Card Hub sidebar panel so it appears as soon as the integration is installed via HACS (no config entry needed)
     hass.data.setdefault(DOMAIN, {})

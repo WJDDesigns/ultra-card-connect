@@ -2,6 +2,11 @@
 
 All notable changes to Ultra Card Pro Cloud will be documented in this file.
 
+## [1.0.7] - 2026-02-25
+
+### Fixed
+- **Sidebar panel now loads reliably for all users** – The `ultra-card-panel.js` file is now bundled directly inside this integration instead of being loaded from the Ultra Card HACS frontend card path (`/hacsfiles/Ultra-Card/`). Previously, users who installed the Pro Cloud integration without the Ultra Card card also installed via HACS would see *"Unable to load custom panel"* on page load. The integration is now fully self-contained.
+
 ## [1.0.6] - 2025-02-25
 
 ### Added

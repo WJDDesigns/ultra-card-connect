@@ -28,8 +28,10 @@ ERROR_CANNOT_CONNECT = "cannot_connect"
 ERROR_UNKNOWN = "unknown"
 
 # Panel (Ultra Card Hub sidebar)
-# JS path must match where HACS serves the Ultra Card frontend repo (often "Ultra-Card" from GitHub repo name)
+# Served directly from this integration's www/ folder — no dependency on the
+# Ultra Card HACS frontend card being installed separately.
 PANEL_URL_PATH = "ultra-card-hub"
-PANEL_JS_URL = "/hacsfiles/Ultra-Card/ultra-card-panel.js"
+PANEL_STATIC_URL_PATH = "/ultra_card_pro_cloud_panel"
+PANEL_JS_URL = "/ultra_card_pro_cloud_panel/ultra-card-panel.js"
 PANEL_CUSTOM_ELEMENT = "ultra-card-panel"
 
