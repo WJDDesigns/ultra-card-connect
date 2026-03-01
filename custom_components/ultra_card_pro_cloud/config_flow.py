@@ -13,6 +13,12 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectOptionDict,
+    SelectSelectorMode,
+)
 
 from .const import (
     DOMAIN,
@@ -34,6 +40,21 @@ RATE_LIMIT_DELAY = 5  # seconds
 USER_AGENT = "HomeAssistant/UltraCardProCloud/1.0"
 REQUEST_TIMEOUT = 30  # Total timeout in seconds
 CONNECT_TIMEOUT = 10  # Connection establishment timeout
+
+# Menu: Sign In or Set Up Without Account (so sidebar appears for new users)
+STEP_MENU_SCHEMA = vol.Schema(
+    {
+        vol.Required("next_step", default="sign_in"): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(value="sign_in", label="Sign in with ultracard.io account"),
+                    SelectOptionDict(value="setup_without_account", label="Set up without an account (sign in later in the sidebar)"),
+                ],
+                mode=SelectSelectorMode.LIST,
+            )
+        ),
+    }
+)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
@@ -204,14 +225,35 @@ async def validate_auth(
 
 
 class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Ultra Card Pro Cloud."""
+    """Handle a config flow for Ultra Card Connect."""
 
     VERSION = 1
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
+        """Show menu: Sign In or Set Up Without Account."""
+        if user_input is not None:
+            if user_input["next_step"] == "setup_without_account":
+                # Create entry with no credentials; user signs in later via Account tab
+                _LOGGER.debug("Creating config entry without credentials (sidebar only)")
+                return self.async_create_entry(
+                    title="Ultra Card (not signed in)",
+                    data={},
+                )
+            # Sign in -> go to credentials step
+            return await self.async_step_credentials(None)
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=STEP_MENU_SCHEMA,
+            description_placeholders={"url": "https://ultracard.io"},
+        )
+
+    async def async_step_credentials(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle username/password step."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -222,33 +264,58 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_PASSWORD],
                 )
 
-                # Create unique ID based on username to prevent duplicate entries
                 await self.async_set_unique_id(user_input[CONF_USERNAME].lower())
                 self._abort_if_unique_id_configured()
 
-                _LOGGER.debug("✅ Creating config entry for user: %s", info['username'])
+                _LOGGER.debug("Creating config entry for user: %s", info["username"])
                 return self.async_create_entry(
-                    title=f"Ultra Card Pro ({info['username']})",
+                    title=f"Ultra Card ({info['username']})",
                     data=user_input,
                 )
 
             except InvalidAuth:
-                _LOGGER.warning("⚠️ Invalid credentials provided")
+                _LOGGER.warning("Invalid credentials provided")
                 errors["base"] = ERROR_INVALID_AUTH
             except CannotConnect:
-                _LOGGER.warning("⚠️ Cannot connect to ultracard.io")
+                _LOGGER.warning("Cannot connect to ultracard.io")
                 errors["base"] = ERROR_CANNOT_CONNECT
             except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("❌ Unexpected exception during config flow")
+                _LOGGER.exception("Unexpected exception during config flow")
                 errors["base"] = ERROR_UNKNOWN
 
         return self.async_show_form(
-            step_id="user",
+            step_id="credentials",
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
-            description_placeholders={
-                "url": "https://ultracard.io",
-            },
+            description_placeholders={"url": "https://ultracard.io"},
+        )
+
+    async def async_step_user_api(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Programmatic entry creation from the frontend HTTP API view.
+
+        Called with data={CONF_USERNAME: ..., CONF_PASSWORD: ...} already
+        validated by the caller. We skip the interactive UI entirely.
+        """
+        if user_input is None:
+            return self.async_abort(reason="unknown")
+
+        username = user_input.get(CONF_USERNAME, "")
+        password = user_input.get(CONF_PASSWORD, "")
+
+        try:
+            info = await validate_auth(self.hass, username, password)
+        except (InvalidAuth, CannotConnect) as err:
+            _LOGGER.warning("API-initiated auth failed: %s", err)
+            return self.async_abort(reason="invalid_auth")
+
+        await self.async_set_unique_id(username.lower())
+        self._abort_if_unique_id_configured()
+
+        return self.async_create_entry(
+            title=f"Ultra Card ({info.get('username', username)})",
+            data={CONF_USERNAME: username, CONF_PASSWORD: password},
         )
 
     async def async_step_reauth(self, entry_data: dict[str, Any]) -> FlowResult:

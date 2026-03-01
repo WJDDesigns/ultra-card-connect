@@ -1,16 +1,22 @@
 """The Ultra Card Pro Cloud integration."""
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 from datetime import timedelta
 from pathlib import Path
 
+from aiohttp import web
+from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CONF_PASSWORD,
+    CONF_USERNAME,
     DOMAIN,
     DATA_COORDINATOR,
     DATA_AUTH,
@@ -20,6 +26,182 @@ from .const import (
     PANEL_CUSTOM_ELEMENT,
 )
 from .coordinator import UltraCardProCloudCoordinator
+
+
+# ---------------------------------------------------------------------------
+# HTTP API views — single source of auth for the Ultra Card frontend.
+# The frontend NEVER stores credentials in localStorage; instead it calls
+# these endpoints (authenticated via the user's existing HA session) and the
+# integration stores username/password securely in HA's config entry storage.
+# ---------------------------------------------------------------------------
+
+class UltraCardLoginView(HomeAssistantView):
+    """POST /api/ultra_card_pro_cloud/login — store credentials and authenticate."""
+
+    url = "/api/ultra_card_pro_cloud/login"
+    name = "api:ultra_card_pro_cloud:login"
+    requires_auth = True
+
+    async def post(self, request: web.Request) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+        try:
+            body = await request.json()
+        except Exception:
+            return self.json({"error": "Invalid JSON"}, status_code=400)
+
+        username = (body.get("username") or body.get("email") or "").strip()
+        password = (body.get("password") or "").strip()
+
+        if not username or not password:
+            return self.json({"error": "username and password are required"}, status_code=400)
+
+        entries = hass.config_entries.async_entries(DOMAIN)
+
+        if entries:
+            # Update the existing config entry with the new credentials
+            entry = entries[0]
+            hass.config_entries.async_update_entry(
+                entry,
+                data={**entry.data, CONF_USERNAME: username, CONF_PASSWORD: password},
+            )
+            # Force the coordinator to re-authenticate with fresh credentials
+            domain_data = hass.data.get(DOMAIN, {})
+            entry_data = domain_data.get(entry.entry_id, {})
+            coordinator = entry_data.get(DATA_COORDINATOR)
+            if coordinator:
+                coordinator._jwt_token = None
+                coordinator._refresh_token = None
+                coordinator._token_expires_at = 0
+                await coordinator.async_refresh()
+        else:
+            # No config entry yet — create one via the config flow
+            result = await hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "user_api"},
+                data={CONF_USERNAME: username, CONF_PASSWORD: password},
+            )
+            if result.get("type") not in ("create_entry", "abort"):
+                return self.json({"error": "Failed to create integration entry"}, status_code=500)
+            # Wait briefly for the entry to be set up and sensor to populate
+            await asyncio.sleep(2)
+
+        # Return the current sensor state so the frontend can update immediately
+        sensor_id = "sensor.ultra_card_pro_cloud_authentication_status"
+        sensor_state = hass.states.get(sensor_id)
+        if sensor_state and sensor_state.state == "connected":
+            attrs = dict(sensor_state.attributes)
+            return self.json({"success": True, "user": attrs})
+
+        return self.json({"error": "Authentication failed — check your credentials"}, status_code=401)
+
+
+class UltraCardLogoutView(HomeAssistantView):
+    """POST /api/ultra_card_pro_cloud/logout — clear stored credentials."""
+
+    url = "/api/ultra_card_pro_cloud/logout"
+    name = "api:ultra_card_pro_cloud:logout"
+    requires_auth = True
+
+    async def post(self, request: web.Request) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if entries:
+            entry = entries[0]
+            # Remove credentials from config entry data but keep the entry itself
+            clean_data = {
+                k: v for k, v in entry.data.items()
+                if k not in (CONF_USERNAME, CONF_PASSWORD)
+            }
+            hass.config_entries.async_update_entry(entry, data=clean_data)
+            domain_data = hass.data.get(DOMAIN, {})
+            entry_data = domain_data.get(entry.entry_id, {})
+            coordinator = entry_data.get(DATA_COORDINATOR)
+            if coordinator:
+                coordinator._jwt_token = None
+                coordinator._refresh_token = None
+                coordinator._token_expires_at = 0
+                await coordinator.async_refresh()
+        return self.json({"success": True})
+
+
+class UltraCardRegisterView(HomeAssistantView):
+    """POST /api/ultra_card_pro_cloud/register — create account then store credentials."""
+
+    url = "/api/ultra_card_pro_cloud/register"
+    name = "api:ultra_card_pro_cloud:register"
+    requires_auth = True
+
+    async def post(self, request: web.Request) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+        try:
+            body = await request.json()
+        except Exception:
+            return self.json({"error": "Invalid JSON"}, status_code=400)
+
+        username = (body.get("username") or "").strip()
+        email = (body.get("email") or "").strip()
+        password = (body.get("password") or "").strip()
+
+        if not email or not password:
+            return self.json({"error": "email and password are required"}, status_code=400)
+
+        # Register on ultracard.io via our custom WordPress endpoint
+        from homeassistant.helpers.aiohttp_client import async_get_clientsession
+        from .const import API_BASE_URL
+        session = async_get_clientsession(hass)
+        try:
+            async with session.post(
+                f"{API_BASE_URL}/ultra-card/v1/register",
+                json={"username": username or email.split("@")[0], "email": email, "password": password},
+                timeout=aiohttp_timeout(15),
+            ) as resp:
+                data = await resp.json()
+                if not resp.ok:
+                    msg = data.get("message") or data.get("error") or "Registration failed"
+                    return self.json({"error": msg}, status_code=resp.status)
+        except Exception as err:
+            _LOGGER.error("Registration request failed: %s", err)
+            return self.json({"error": "Could not reach ultracard.io — check your network"}, status_code=503)
+
+        # Registration succeeded — now store credentials via the login flow
+        login_view = UltraCardLoginView()
+        # Re-use login logic: inject a synthetic request body
+        login_username = email
+        login_password = password
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if entries:
+            entry = entries[0]
+            hass.config_entries.async_update_entry(
+                entry,
+                data={**entry.data, CONF_USERNAME: login_username, CONF_PASSWORD: login_password},
+            )
+            domain_data = hass.data.get(DOMAIN, {})
+            coordinator = domain_data.get(entry.entry_id, {}).get(DATA_COORDINATOR)
+            if coordinator:
+                coordinator._jwt_token = None
+                coordinator._refresh_token = None
+                coordinator._token_expires_at = 0
+                await coordinator.async_refresh()
+        else:
+            await hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "user_api"},
+                data={CONF_USERNAME: login_username, CONF_PASSWORD: login_password},
+            )
+            await asyncio.sleep(2)
+
+        sensor_id = "sensor.ultra_card_pro_cloud_authentication_status"
+        sensor_state = hass.states.get(sensor_id)
+        if sensor_state and sensor_state.state == "connected":
+            return self.json({"success": True, "user": dict(sensor_state.attributes)})
+
+        return self.json({"success": True, "message": "Account created — authentication pending"})
+
+
+def aiohttp_timeout(seconds: int):
+    """Return an aiohttp ClientTimeout."""
+    import aiohttp
+    return aiohttp.ClientTimeout(total=seconds)
 
 # Read version from root version.py file
 import os
@@ -41,8 +223,15 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]  # Sensor platform for authenticat
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the Ultra Card Pro Cloud component. Registers the sidebar panel so it appears on install (no config entry required)."""
+    """Set up the Ultra Card Pro Cloud component."""
     from homeassistant.components import frontend
+
+    # Register HTTP API views — available immediately, no config entry required.
+    # These let the Ultra Card frontend store/clear credentials through HA's auth
+    # layer instead of browser localStorage.
+    hass.http.register_view(UltraCardLoginView())
+    hass.http.register_view(UltraCardLogoutView())
+    hass.http.register_view(UltraCardRegisterView())
 
     _LOGGER.info("Ultra Card Pro Cloud v%s component setup called", __version__)
 

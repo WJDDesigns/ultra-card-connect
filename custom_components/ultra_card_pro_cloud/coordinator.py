@@ -162,9 +162,13 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         """Fetch data from API."""
         try:
             _LOGGER.debug("🔄 Starting data update cycle")
-            
+
+            # No credentials (set up without account) — report disconnected; user signs in later via Account tab
+            if not self.entry.data or CONF_USERNAME not in self.entry.data:
+                return {"authenticated": False}
+
             current_time = int(time.time())
-            
+
             # Check if we have a valid token
             if not self._jwt_token:
                 _LOGGER.info("🔐 No JWT token, authenticating...")

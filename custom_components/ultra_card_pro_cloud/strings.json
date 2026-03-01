@@ -3,7 +3,14 @@
     "step": {
       "user": {
         "title": "Set Up Ultra Card Connect",
-        "description": "Install once to add the Ultra Card sidebar to Home Assistant — available to all users. Pro subscribers also get their subscription synced automatically across every device. Enter your ultracard.io credentials to get started.",
+        "description": "Ultra Card Connect adds the Ultra Card sidebar to Home Assistant for all users on this system. Choose how you'd like to set it up.",
+        "data": {
+          "next_step": "Setup option"
+        }
+      },
+      "credentials": {
+        "title": "Sign In to ultracard.io",
+        "description": "Enter your ultracard.io account credentials. Don't have an account yet? [Create one free at ultracard.io](https://ultracard.io/register). Pro subscribers get their subscription synced automatically across every device.",
         "data": {
           "username": "Username or Email",
           "password": "Password"
@@ -29,4 +36,3 @@
     }
   }
 }
-
