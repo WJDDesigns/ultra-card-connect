@@ -2,6 +2,16 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [1.1.1] - 2026-03-12
+
+### Changed
+- **Ultra Card Hub panel updated** — The sidebar panel JavaScript bundled in this integration has been updated to the latest build from the Ultra Card repo. This includes layout and mobile fixes (panel no longer wider than screen on mobile, menu tabs no longer overflow).
+- **README: why the panel doesn’t update with the card** — Added a short section explaining that the Ultra Card Hub is served by this integration, not by the HACS “Ultra Card” frontend. Updating only the card updates dashboards and the card editor; **updating this integration** is required to get the latest Hub panel and favorite colors API behavior.
+
+### Notes
+- **Favorite colors** — Persistence across devices and after logout uses this integration’s API (`/api/ultra_card_pro_cloud/favorite_colors`). No backend changes in this release; the frontend (Ultra Card) now syncs to this API from every entry point. If you see a 404 in the console, ensure this integration is installed and updated.
+- **If the Hub still looks old after updating** — Hard refresh the browser (Ctrl+Shift+R / Cmd+Shift+R) or restart Home Assistant so the new panel bundle is loaded.
+
 ## [1.0.9] - 2026-02-25
 
 ### Changed

@@ -13,6 +13,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_PASSWORD,
@@ -34,6 +35,24 @@ from .coordinator import UltraCardProCloudCoordinator
 # these endpoints (authenticated via the user's existing HA session) and the
 # integration stores username/password securely in HA's config entry storage.
 # ---------------------------------------------------------------------------
+
+AUTH_SENSOR_ID = "sensor.ultra_card_pro_cloud_authentication_status"
+# Wait for coordinator to finish auth and sensor to update (avoids "succeeds on 3rd attempt" race)
+AUTH_SENSOR_WAIT_TIMEOUT = 15  # seconds
+AUTH_SENSOR_POLL_INTERVAL = 0.5  # seconds
+
+
+async def _wait_for_auth_sensor(hass: HomeAssistant) -> dict | None:
+    """Poll until auth sensor is 'connected' or timeout. Returns attributes dict or None."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + AUTH_SENSOR_WAIT_TIMEOUT
+    while loop.time() < deadline:
+        state = hass.states.get(AUTH_SENSOR_ID)
+        if state and state.state == "connected":
+            return dict(state.attributes)
+        await asyncio.sleep(AUTH_SENSOR_POLL_INTERVAL)
+    return None
+
 
 class UltraCardLoginView(HomeAssistantView):
     """POST /api/ultra_card_pro_cloud/login — store credentials and authenticate."""
@@ -82,14 +101,11 @@ class UltraCardLoginView(HomeAssistantView):
             )
             if result.get("type") not in ("create_entry", "abort"):
                 return self.json({"error": "Failed to create integration entry"}, status_code=500)
-            # Wait briefly for the entry to be set up and sensor to populate
-            await asyncio.sleep(2)
 
-        # Return the current sensor state so the frontend can update immediately
-        sensor_id = "sensor.ultra_card_pro_cloud_authentication_status"
-        sensor_state = hass.states.get(sensor_id)
-        if sensor_state and sensor_state.state == "connected":
-            attrs = dict(sensor_state.attributes)
+        # Wait for coordinator to finish and sensor to show connected (fixes race where
+        # first attempt returned 401 because we checked the sensor too soon)
+        attrs = await _wait_for_auth_sensor(hass)
+        if attrs is not None:
             return self.json({"success": True, "user": attrs})
 
         return self.json({"error": "Authentication failed — check your credentials"}, status_code=401)
@@ -198,6 +214,58 @@ class UltraCardRegisterView(HomeAssistantView):
         return self.json({"success": True, "message": "Account created — authentication pending"})
 
 
+# Favorite colors storage key and version (persisted in HA .storage)
+FAVORITE_COLORS_STORAGE_KEY = "ultra_card_pro_cloud.favorite_colors"
+FAVORITE_COLORS_STORAGE_VERSION = 1
+
+
+class UltraCardFavoriteColorsView(HomeAssistantView):
+    """GET/POST /api/ultra_card_pro_cloud/favorite_colors — load/save favorite colors in HA store."""
+
+    url = "/api/ultra_card_pro_cloud/favorite_colors"
+    name = "api:ultra_card_pro_cloud:favorite_colors"
+    requires_auth = True
+
+    async def get(self, request: web.Request) -> web.Response:
+        """Return stored favorite colors from HA store."""
+        hass: HomeAssistant = request.app["hass"]
+        store = Store(hass, FAVORITE_COLORS_STORAGE_VERSION, FAVORITE_COLORS_STORAGE_KEY)
+        data = await store.async_load()
+        if data is None or "colors" not in data:
+            return self.json({"colors": []})
+        colors = data.get("colors", [])
+        if not isinstance(colors, list):
+            return self.json({"colors": []})
+        return self.json({"colors": colors})
+
+    async def post(self, request: web.Request) -> web.Response:
+        """Save favorite colors to HA store."""
+        hass: HomeAssistant = request.app["hass"]
+        try:
+            body = await request.json()
+        except Exception:
+            return self.json({"error": "Invalid JSON"}, status_code=400)
+        colors = body.get("colors") if isinstance(body, dict) else body
+        if not isinstance(colors, list):
+            return self.json({"error": "colors must be an array"}, status_code=400)
+        # Basic validation: each item must have id, name, color, order
+        validated = []
+        for i, item in enumerate(colors):
+            if not isinstance(item, dict):
+                continue
+            if not all(k in item for k in ("id", "name", "color", "order")):
+                continue
+            validated.append({
+                "id": str(item["id"]),
+                "name": str(item["name"]),
+                "color": str(item["color"]),
+                "order": int(item["order"]) if isinstance(item.get("order"), (int, float)) else i,
+            })
+        store = Store(hass, FAVORITE_COLORS_STORAGE_VERSION, FAVORITE_COLORS_STORAGE_KEY)
+        await store.async_save({"colors": validated})
+        return self.json({"success": True, "colors": validated})
+
+
 def aiohttp_timeout(seconds: int):
     """Return an aiohttp ClientTimeout."""
     import aiohttp
@@ -232,6 +300,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(UltraCardLoginView())
     hass.http.register_view(UltraCardLogoutView())
     hass.http.register_view(UltraCardRegisterView())
+    hass.http.register_view(UltraCardFavoriteColorsView())
 
     _LOGGER.info("Ultra Card Pro Cloud v%s component setup called", __version__)
 
