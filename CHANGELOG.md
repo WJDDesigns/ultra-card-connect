@@ -2,6 +2,15 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [1.1.2] - 2026-03-13
+
+### Fixed
+- **Panel scrolling** — `:host` now uses `height: 100dvh` instead of `height: 100%`. When HA's panel host has no explicit height the old value collapsed to zero, making only the visible portion of the Hub accessible with no way to scroll. Now works correctly on all devices including mobile.
+- **Snapshot "No Ultra Cards found"** — Fixed two causes:
+  - `getCurrentDashboardPath()` now correctly returns `null` when called from the sidebar panel (URL isn't a `/lovelace/` path). Previously it returned `'default'` which caused the scanner to query the wrong dashboard and find 0 cards even when 53 existed.
+  - `getDashboardStats()` now also counts cards inside modern **sections-layout** views (`view.sections[n].cards`). Only `view.cards` was checked before, so all cards on sections-layout dashboards returned a count of 0.
+- **Cross-device color sync** — `_haLoaded` is now only latched after a **successful** API response. Previously it was set before the async load completed, so a transient error (slow connection, HA still booting) permanently blocked any retry for the session. The load now retries on the next `setHass()` call for any non-404/non-auth error.
+
 ## [1.1.1] - 2026-03-12
 
 ### Changed
