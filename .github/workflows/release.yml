@@ -6,7 +6,28 @@ on:
       - 'v*'
 
 jobs:
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
+
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run hassfest
+        uses: home-assistant/actions/hassfest@master
+        with:
+          path: "."
+
   release:
+    needs: [hacs, hassfest]
     runs-on: ubuntu-latest
     permissions:
       contents: write

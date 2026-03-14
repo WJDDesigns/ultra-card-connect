@@ -199,13 +199,13 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             subscription_data = await self._fetch_subscription()
             
             import datetime
+            # Token is kept in coordinator only; frontend uses integration proxy for API calls
             result = {
                 "authenticated": True,
                 "user_id": user_data.get("id"),
                 "username": user_data.get("user_nicename") or user_data.get("name"),
                 "email": user_data.get("user_email") or user_data.get("email"),
                 "display_name": user_data.get("display_name") or user_data.get("name"),
-                "token": self._jwt_token,  # CRITICAL: Include JWT token for frontend API calls
                 "connected_at": datetime.datetime.now().isoformat(),
                 "subscription": {
                     "tier": subscription_data.get("tier", "free"),
@@ -570,7 +570,9 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         if not self._jwt_token:
             raise UpdateFailed("No JWT token available")
 
-        url = f"{API_BASE_URL}/wp/v2/users/me"
+        # WordPress only includes sensitive fields like email for authenticated
+        # self-requests when the profile is fetched with context=edit.
+        url = f"{API_BASE_URL}/wp/v2/users/me?context=edit"
         
         _LOGGER.debug("👤 Fetching user profile from: %s", url)
 

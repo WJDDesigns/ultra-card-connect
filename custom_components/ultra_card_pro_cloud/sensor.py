@@ -95,18 +95,17 @@ class UltraCardProCloudAuthSensor(CoordinatorEntity, SensorEntity):
         username = self.coordinator.data.get("username") or "User"
         display_name = self.coordinator.data.get("display_name") or username
         
+        # Do NOT expose token in entity state; frontend uses integration proxy for API calls
         return {
             "authenticated": True,
             "user_id": self.coordinator.data.get("user_id"),
             "username": username,
             "email": self.coordinator.data.get("email") or "",
             "display_name": display_name,
-            "token": self.coordinator.data.get("token"),  # CRITICAL: Expose JWT token for frontend API calls
             "subscription_tier": subscription.get("tier", "free"),
             "subscription_status": subscription.get("status", "expired"),
             "subscription_expires": subscription.get("expires"),
             "connected_at": self.coordinator.data.get("connected_at"),
-            # Features for PRO validation
             "features": subscription.get("features", {}),
         }
 

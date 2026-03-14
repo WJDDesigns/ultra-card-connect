@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import timedelta
+import secrets
 from pathlib import Path
 
 from aiohttp import web
@@ -16,6 +16,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 
 from .const import (
+    API_BASE_URL,
     CONF_PASSWORD,
     CONF_USERNAME,
     DOMAIN,
@@ -27,6 +28,33 @@ from .const import (
     PANEL_CUSTOM_ELEMENT,
 )
 from .coordinator import UltraCardProCloudCoordinator
+
+
+def _user_attrs_for_frontend(attrs: dict | None) -> dict:
+    """Return sensor attributes safe for frontend (no token)."""
+    if not attrs:
+        return {}
+    return {k: v for k, v in attrs.items() if k != "token"}
+
+
+def _request_hass_user(request: web.Request):
+    """Return the current HA user object when available."""
+    return request.get("hass_user")
+
+
+def _request_hass_user_id(request: web.Request) -> str | None:
+    """Return the current HA user id when available."""
+    user = _request_hass_user(request)
+    user_id = getattr(user, "id", None)
+    return str(user_id) if user_id else None
+
+
+def _request_can_manage_shared_auth(request: web.Request) -> bool:
+    """Only admins/owners can mutate shared integration auth state."""
+    user = _request_hass_user(request)
+    if not user:
+        return False
+    return bool(getattr(user, "is_admin", False) or getattr(user, "is_owner", False))
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +91,11 @@ class UltraCardLoginView(HomeAssistantView):
 
     async def post(self, request: web.Request) -> web.Response:
         hass: HomeAssistant = request.app["hass"]
+        if not _request_can_manage_shared_auth(request):
+            return self.json(
+                {"error": "Only Home Assistant admins can manage Ultra Card shared sign-in."},
+                status_code=403,
+            )
         try:
             body = await request.json()
         except Exception:
@@ -106,7 +139,7 @@ class UltraCardLoginView(HomeAssistantView):
         # first attempt returned 401 because we checked the sensor too soon)
         attrs = await _wait_for_auth_sensor(hass)
         if attrs is not None:
-            return self.json({"success": True, "user": attrs})
+            return self.json({"success": True, "user": _user_attrs_for_frontend(attrs)})
 
         return self.json({"error": "Authentication failed — check your credentials"}, status_code=401)
 
@@ -120,6 +153,11 @@ class UltraCardLogoutView(HomeAssistantView):
 
     async def post(self, request: web.Request) -> web.Response:
         hass: HomeAssistant = request.app["hass"]
+        if not _request_can_manage_shared_auth(request):
+            return self.json(
+                {"error": "Only Home Assistant admins can manage Ultra Card shared sign-in."},
+                status_code=403,
+            )
         entries = hass.config_entries.async_entries(DOMAIN)
         if entries:
             entry = entries[0]
@@ -141,7 +179,7 @@ class UltraCardLogoutView(HomeAssistantView):
 
 
 class UltraCardRegisterView(HomeAssistantView):
-    """POST /api/ultra_card_pro_cloud/register — create account then store credentials."""
+    """POST /api/ultra_card_pro_cloud/register — create account and send password setup email."""
 
     url = "/api/ultra_card_pro_cloud/register"
     name = "api:ultra_card_pro_cloud:register"
@@ -156,67 +194,113 @@ class UltraCardRegisterView(HomeAssistantView):
 
         username = (body.get("username") or "").strip()
         email = (body.get("email") or "").strip()
-        password = (body.get("password") or "").strip()
+        display_name = (body.get("display_name") or username or email.split("@")[0]).strip()
 
-        if not email or not password:
-            return self.json({"error": "email and password are required"}, status_code=400)
+        if not username or not email:
+            return self.json({"error": "username and email are required"}, status_code=400)
 
         # Register on ultracard.io via our custom WordPress endpoint
-        from homeassistant.helpers.aiohttp_client import async_get_clientsession
-        from .const import API_BASE_URL
         session = async_get_clientsession(hass)
+        payload = {
+            "username": username or email.split("@")[0],
+            "email": email,
+            "display_name": display_name,
+            # Backward compatibility for older ultracard.io builds that still
+            # require a password field during registration.
+            "password": secrets.token_urlsafe(24),
+        }
         try:
             async with session.post(
                 f"{API_BASE_URL}/ultra-card/v1/register",
-                json={"username": username or email.split("@")[0], "email": email, "password": password},
+                json=payload,
                 timeout=aiohttp_timeout(15),
             ) as resp:
                 data = await resp.json()
-                if not resp.ok:
-                    msg = data.get("message") or data.get("error") or "Registration failed"
-                    return self.json({"error": msg}, status_code=resp.status)
+                if resp.ok:
+                    message = data.get("message") or (
+                        "Account created. Check your email inbox, junk, or spam for the ultracard.io message to finish setting your password, then come back here to sign in."
+                    )
+                    return self.json({"success": True, "message": message})
+
+                msg = data.get("message") or data.get("error") or "Registration failed"
+
+                # Some older ultracard.io builds parse form-encoded request bodies
+                # but ignore JSON payloads, which makes password appear missing.
+                should_retry_as_form = (
+                    resp.status == 400
+                    and isinstance(msg, str)
+                    and "password" in msg.lower()
+                    and "required" in msg.lower()
+                )
+                if should_retry_as_form:
+                    async with session.post(
+                        f"{API_BASE_URL}/ultra-card/v1/register",
+                        data=payload,
+                        timeout=aiohttp_timeout(15),
+                    ) as retry_resp:
+                        retry_data = await retry_resp.json()
+                        if retry_resp.ok:
+                            message = retry_data.get("message") or (
+                                "Account created. Check your email inbox, junk, or spam for the ultracard.io message to finish setting your password, then come back here to sign in."
+                            )
+                            return self.json({"success": True, "message": message})
+
+                        msg = (
+                            retry_data.get("message")
+                            or retry_data.get("error")
+                            or msg
+                            or "Registration failed"
+                        )
+
+                return self.json({"error": msg}, status_code=resp.status)
         except Exception as err:
             _LOGGER.error("Registration request failed: %s", err)
             return self.json({"error": "Could not reach ultracard.io — check your network"}, status_code=503)
-
-        # Registration succeeded — now store credentials via the login flow
-        login_view = UltraCardLoginView()
-        # Re-use login logic: inject a synthetic request body
-        login_username = email
-        login_password = password
-        entries = hass.config_entries.async_entries(DOMAIN)
-        if entries:
-            entry = entries[0]
-            hass.config_entries.async_update_entry(
-                entry,
-                data={**entry.data, CONF_USERNAME: login_username, CONF_PASSWORD: login_password},
-            )
-            domain_data = hass.data.get(DOMAIN, {})
-            coordinator = domain_data.get(entry.entry_id, {}).get(DATA_COORDINATOR)
-            if coordinator:
-                coordinator._jwt_token = None
-                coordinator._refresh_token = None
-                coordinator._token_expires_at = 0
-                await coordinator.async_refresh()
-        else:
-            await hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "user_api"},
-                data={CONF_USERNAME: login_username, CONF_PASSWORD: login_password},
-            )
-            await asyncio.sleep(2)
-
-        sensor_id = "sensor.ultra_card_pro_cloud_authentication_status"
-        sensor_state = hass.states.get(sensor_id)
-        if sensor_state and sensor_state.state == "connected":
-            return self.json({"success": True, "user": dict(sensor_state.attributes)})
-
-        return self.json({"success": True, "message": "Account created — authentication pending"})
 
 
 # Favorite colors storage key and version (persisted in HA .storage)
 FAVORITE_COLORS_STORAGE_KEY = "ultra_card_pro_cloud.favorite_colors"
 FAVORITE_COLORS_STORAGE_VERSION = 1
+
+
+def _extract_user_colors(data: dict | None, user_id: str | None) -> list[dict]:
+    """Return per-user colors with fallback to legacy global storage."""
+    if not isinstance(data, dict):
+        return []
+
+    if user_id:
+        users = data.get("users")
+        if isinstance(users, dict):
+            user_bucket = users.get(user_id)
+            if isinstance(user_bucket, dict):
+                colors = user_bucket.get("colors")
+                if isinstance(colors, list):
+                    return colors
+
+    colors = data.get("colors")
+    return colors if isinstance(colors, list) else []
+
+
+def _store_user_colors(data: dict | None, user_id: str | None, colors: list[dict]) -> dict:
+    """Persist per-user colors while preserving legacy/global keys."""
+    next_data = dict(data) if isinstance(data, dict) else {}
+
+    if not user_id:
+        next_data["colors"] = colors
+        return next_data
+
+    users = next_data.get("users")
+    if not isinstance(users, dict):
+        users = {}
+
+    user_bucket = users.get(user_id)
+    if not isinstance(user_bucket, dict):
+        user_bucket = {}
+
+    user_bucket["colors"] = colors
+    users[user_id] = user_bucket
+    next_data["users"] = users
+    return next_data
 
 
 class UltraCardFavoriteColorsView(HomeAssistantView):
@@ -229,18 +313,15 @@ class UltraCardFavoriteColorsView(HomeAssistantView):
     async def get(self, request: web.Request) -> web.Response:
         """Return stored favorite colors from HA store."""
         hass: HomeAssistant = request.app["hass"]
+        user_id = _request_hass_user_id(request)
         store = Store(hass, FAVORITE_COLORS_STORAGE_VERSION, FAVORITE_COLORS_STORAGE_KEY)
         data = await store.async_load()
-        if data is None or "colors" not in data:
-            return self.json({"colors": []})
-        colors = data.get("colors", [])
-        if not isinstance(colors, list):
-            return self.json({"colors": []})
-        return self.json({"colors": colors})
+        return self.json({"colors": _extract_user_colors(data, user_id)})
 
     async def post(self, request: web.Request) -> web.Response:
         """Save favorite colors to HA store."""
         hass: HomeAssistant = request.app["hass"]
+        user_id = _request_hass_user_id(request)
         try:
             body = await request.json()
         except Exception:
@@ -262,8 +343,82 @@ class UltraCardFavoriteColorsView(HomeAssistantView):
                 "order": int(item["order"]) if isinstance(item.get("order"), (int, float)) else i,
             })
         store = Store(hass, FAVORITE_COLORS_STORAGE_VERSION, FAVORITE_COLORS_STORAGE_KEY)
-        await store.async_save({"colors": validated})
+        existing = await store.async_load()
+        await store.async_save(_store_user_colors(existing, user_id, validated))
         return self.json({"success": True, "colors": validated})
+
+
+class UltraCardProxyView(HomeAssistantView):
+    """POST /api/ultra_card_pro_cloud/proxy — forward API calls to ultracard.io with integration token.
+
+    The frontend never receives the JWT; it sends method/url/body and the integration
+    adds the token and returns the response. Only allows URLs under API_BASE_URL.
+    """
+
+    url = "/api/ultra_card_pro_cloud/proxy"
+    name = "api:ultra_card_pro_cloud:proxy"
+    requires_auth = True
+
+    async def post(self, request: web.Request) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+        try:
+            body = await request.json()
+        except Exception:
+            return self.json({"error": "Invalid JSON", "_status": 400, "_body": None}, status_code=400)
+
+        method = (body.get("method") or "GET").upper()
+        url = (body.get("url") or "").strip()
+        payload = body.get("body")
+
+        if not url or not url.startswith(API_BASE_URL):
+            return self.json({"error": "Invalid URL", "_status": 400, "_body": None}, status_code=400)
+
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            return self.json({"error": "Integration not configured", "_status": 503, "_body": None}, status_code=503)
+
+        entry = entries[0]
+        domain_data = hass.data.get(DOMAIN, {})
+        entry_data = domain_data.get(entry.entry_id, {})
+        coordinator = entry_data.get(DATA_COORDINATOR)
+        if not coordinator or not getattr(coordinator, "_jwt_token", None):
+            return self.json({"error": "Not authenticated", "_status": 401, "_body": None}, status_code=401)
+
+        token = coordinator._jwt_token
+        session = async_get_clientsession(hass)
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+        try:
+            if method == "GET":
+                async with session.get(url, headers=headers, timeout=aiohttp_timeout(30)) as resp:
+                    return await _proxy_response(resp, self.json)
+            if method == "POST":
+                async with session.post(url, headers=headers, json=payload, timeout=aiohttp_timeout(30)) as resp:
+                    return await _proxy_response(resp, self.json)
+            if method == "PUT":
+                async with session.put(url, headers=headers, json=payload, timeout=aiohttp_timeout(30)) as resp:
+                    return await _proxy_response(resp, self.json)
+            if method == "DELETE":
+                async with session.delete(url, headers=headers, timeout=aiohttp_timeout(30)) as resp:
+                    return await _proxy_response(resp, self.json)
+        except Exception as err:
+            _LOGGER.exception("Proxy request failed: %s", err)
+            return self.json({"_status": 502, "_body": {"message": str(err)}}, status_code=502)
+
+        return self.json({"error": "Method not allowed", "_status": 405, "_body": None}, status_code=405)
+
+
+async def _proxy_response(resp, json_response_fn):
+    """Read aiohttp response and return JSON with _status and _body for frontend."""
+    try:
+        raw = await resp.read()
+    except Exception:
+        raw = b""
+    try:
+        _body = json.loads(raw) if raw else None
+    except Exception:
+        _body = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else None
+    return json_response_fn({"_status": resp.status, "_body": _body})
 
 
 def aiohttp_timeout(seconds: int):
@@ -301,6 +456,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(UltraCardLogoutView())
     hass.http.register_view(UltraCardRegisterView())
     hass.http.register_view(UltraCardFavoriteColorsView())
+    hass.http.register_view(UltraCardProxyView())
 
     _LOGGER.info("Ultra Card Pro Cloud v%s component setup called", __version__)
 

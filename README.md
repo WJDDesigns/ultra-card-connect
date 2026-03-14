@@ -206,7 +206,7 @@ If you had "Ultra Card Pro Cloud" installed before this rename, **nothing breaks
 
 ## 👨‍👩‍👧‍👦 Multiple HA Users
 
-Each Home Assistant user account can have its own Ultra Card Connect integration configured with separate ultracard.io credentials. Each user sees their own Hub sidebar and their own subscription status independently.
+Ultra Card Connect currently uses one shared Home Assistant integration entry per HA instance. Home Assistant admins manage the shared Ultra Card sign-in, while individual HA users keep their own local Hub preferences like favorite colors.
 
 ---
 
