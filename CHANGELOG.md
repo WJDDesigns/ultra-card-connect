@@ -2,6 +2,19 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [1.3.0] - 2026-03-15
+
+### Fixed
+- **Hub sidebar panel now shows the correct version** — The integration was shipping only `ultra-card-panel.js` without its lazy-load chunk files (`uc-*.js`). The panel's tab modules (Dashboard, Favorites, Presets, Colors, Variables, Templates) are loaded on demand from these chunks — without them the sidebar showed stale versions (e.g. beta11) and some tabs failed to load. All 174 chunk files are now bundled in the integration's `www/` folder alongside the panel
+- **Panel chunk files kept in sync** — The `sync:panel` build script in the Ultra Card repo now copies all chunk files to the integration (previously only the panel bundle was synced), ensuring future releases stay in sync automatically
+
+### Changed
+- **Bundled Hub panel updated to Ultra Card beta16** — Includes all fixes from beta13 through beta16: lazy module loading system, correct HACS release asset delivery, module chunk file packaging, and panel version consistency
+
+### Notes
+- After updating this integration via HACS, **restart Home Assistant** then do a hard reload in your browser (Ctrl+Shift+R / Cmd+Shift+R) to clear the cached panel
+- If cards on dashboards are blank, also update the **Ultra Card** frontend component via HACS (separate from this integration)
+
 ## [1.2.1] - 2026-03-15
 
 ### Fixed
