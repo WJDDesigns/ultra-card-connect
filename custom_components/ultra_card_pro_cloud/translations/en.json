@@ -10,7 +10,7 @@
       },
       "credentials": {
         "title": "Sign In to ultracard.io",
-        "description": "Enter your ultracard.io account credentials. Don't have an account yet? [Create one free at ultracard.io](https://ultracard.io/register). Pro subscribers get their subscription synced automatically across every device.",
+        "description": "Enter your ultracard.io account credentials. Don't have an account yet? Create one free at ultracard.io/register. Pro subscribers get their subscription synced automatically across every device.",
         "data": {
           "username": "Username or Email",
           "password": "Password"
