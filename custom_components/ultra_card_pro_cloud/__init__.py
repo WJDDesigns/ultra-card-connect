@@ -568,12 +568,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return True
 
     except Exception as err:
-        _LOGGER.error("❌ Coordinator/sensor setup failed: %s", err)
+        _LOGGER.exception("❌ Coordinator/sensor setup failed: %s", err)
         hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
-        # Do not raise: panel is already registered; user can still use Hub and retry auth later
-        if entry.entry_id not in hass.data.get(DOMAIN, {}):
-            hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {}
-        return True
+        # Return False so HA marks the config entry as failed and surfaces the error;
+        # user can fix credentials/network and retry from the integration config.
+        return False
 
 
 def _create_update_listener(hass: HomeAssistant, entry: ConfigEntry):

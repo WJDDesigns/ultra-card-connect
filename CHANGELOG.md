@@ -2,6 +2,15 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [1.2.1] - 2026-03-15
+
+### Fixed
+- **Setup failure now surfaces correctly** — When coordinator/sensor setup fails (bad credentials, network error), `async_setup_entry` now returns `False` instead of silently swallowing the error and returning `True`. Home Assistant will correctly mark the config entry as failed and prompt the user to fix credentials or retry from the integration config page.
+- **Better error logging on setup failure** — Changed `_LOGGER.error` to `_LOGGER.exception` so the full Python traceback is captured in the HA logs, making diagnosis significantly easier.
+
+### Changed
+- **Bundled Hub panel updated to Ultra Card beta13** — The sidebar panel JS has been rebuilt from the latest Ultra Card release. This includes the new lazy module loading system (panel chunk is now ~4.4 MB vs ~7.8 MB previously), the async config validation pipeline, and all bug fixes from beta9 through beta13 (action confirmation dialog fix, logic service console spam removed, loading flash eliminated, dashboard scanner improvements).
+
 ## [1.1.2] - 2026-03-13
 
 ### Fixed

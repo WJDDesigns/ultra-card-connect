@@ -25,20 +25,21 @@ const CONFIG = {
 
 console.log("🚀 Ultra Card Pro Cloud Integration Deployment\n");
 
-// Bundle ultra-card-panel.js into the integration's www/ folder so the sidebar
-// panel works without requiring the Ultra Card HACS frontend to be installed.
+// Bundle ultra-card-panel.js and all lazy-load chunks (uc-*.js) into the integration's
+// www/ folder so the sidebar panel works. The panel uses code-splitting; chunks must
+// be deployed or the panel will 404 when loading Dashboard, Favorites, Account, Pro, etc.
 function bundlePanelJs() {
   const wwwDir = path.resolve(__dirname, CONFIG.sourceDir, "www");
   const destFile = path.join(wwwDir, "ultra-card-panel.js");
 
   if (!fs.existsSync(CONFIG.panelJsSrc)) {
-    console.warn(
-      `⚠️  ultra-card-panel.js not found at: ${CONFIG.panelJsSrc}\n` +
+    console.error(
+      `❌ ultra-card-panel.js not found at: ${CONFIG.panelJsSrc}\n` +
         "   Build the Ultra Card project first (npm run build), or set\n" +
         "   ULTRA_CARD_PANEL_JS env var to the correct path.\n" +
-        "   The integration will be deployed WITHOUT the panel JS.\n"
+        "   Deployment aborted so the integration is never deployed without the panel.\n"
     );
-    return false;
+    process.exit(1);
   }
 
   if (!fs.existsSync(wwwDir)) {
@@ -47,7 +48,32 @@ function bundlePanelJs() {
 
   fs.copyFileSync(CONFIG.panelJsSrc, destFile);
   const sizeKb = Math.round(fs.statSync(destFile).size / 1024);
-  console.log(`📦 Bundled ultra-card-panel.js → ${CONFIG.sourceDir}/www/ (${sizeKb} KB)\n`);
+  console.log(`📦 Bundled ultra-card-panel.js → ${CONFIG.sourceDir}/www/ (${sizeKb} KB)`);
+
+  // Copy all panel lazy-load chunks (uc-*.js) from the same dist so dynamic imports resolve.
+  // Without these, the panel will 404 when opening Dashboard, Favorites, Account, Pro tabs.
+  const distDir = path.dirname(CONFIG.panelJsSrc);
+  let chunkCount = 0;
+  if (fs.existsSync(distDir)) {
+    const files = fs.readdirSync(distDir);
+    for (const name of files) {
+      // Match uc-<id>.js (e.g. uc-980.js) but not ultra-card-panel.js
+      if (name.startsWith("uc-") && name.endsWith(".js") && name !== "ultra-card-panel.js") {
+        const src = path.join(distDir, name);
+        const dest = path.join(wwwDir, name);
+        fs.copyFileSync(src, dest);
+        chunkCount++;
+      }
+    }
+  }
+  if (chunkCount > 0) {
+    console.log(`📦 Bundled ${chunkCount} panel chunk(s) (uc-*.js) → ${CONFIG.sourceDir}/www/`);
+  } else {
+    console.log(
+      `⚠️  No uc-*.js chunks found in ${distDir}. Build the Ultra Card project with 'npm run build' first, then run deploy again.`
+    );
+  }
+  console.log("");
   return true;
 }
 
@@ -122,17 +148,19 @@ function deployIntegration(targetPath) {
       return false;
     }
 
-    // Remove old version if exists
-    if (fs.existsSync(targetPath)) {
-      console.log(`  🗑️  Removing old version...`);
-      fs.rmSync(targetPath, { recursive: true, force: true });
-    }
-
     // Create parent directory
     const parentDir = path.dirname(targetPath);
     if (!fs.existsSync(parentDir)) {
       console.log(`  📁 Creating directory: ${parentDir}`);
       fs.mkdirSync(parentDir, { recursive: true });
+    }
+
+    // Samba/network shares can fail when removing a non-empty integration directory
+    // (observed ENOTEMPTY on /Volumes/config). Deploy in place instead of deleting
+    // the root folder so updated panel chunks always make it to Home Assistant.
+    if (!fs.existsSync(targetPath)) {
+      console.log(`  📁 Creating integration directory...`);
+      fs.mkdirSync(targetPath, { recursive: true });
     }
 
     // Copy integration files
@@ -152,7 +180,7 @@ function deployIntegration(targetPath) {
 
 // Main deployment process
 async function deploy() {
-  // Bundle panel JS into integration www/ folder before deploying
+  // Bundle panel JS into integration www/ folder before deploying (exits if panel missing)
   bundlePanelJs();
 
   // Check if volume is mounted
