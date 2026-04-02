@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import secrets
 from pathlib import Path
 
@@ -28,6 +29,93 @@ from .const import (
     PANEL_CUSTOM_ELEMENT,
 )
 from .coordinator import UltraCardProCloudCoordinator
+
+
+def _safe_upload_filename(name: str) -> str:
+    """ASCII-only filename for multipart (avoids REST 400 on some WordPress setups)."""
+    s = re.sub(r"[^A-Za-z0-9._-]", "_", (name or "").strip())
+    return (s or "upload.png")[:180]
+
+
+def _normalize_proxy_payload(body: dict) -> dict | None:
+    """Extract inner proxy payload from HA HTTP/WS bodies (string JSON, nested body wrappers)."""
+    if not isinstance(body, dict):
+        return None
+    payload = body.get("body")
+    if payload is None and isinstance(body.get("data"), dict):
+        payload = body["data"]
+    if payload is None and "__media_upload_b64" in body:
+        payload = {"__media_upload_b64": body["__media_upload_b64"]}
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except Exception:
+            return None
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    for _ in range(4):
+        if "__media_upload_b64" in payload:
+            return payload
+        if "body" in payload:
+            inner = payload["body"]
+            if isinstance(inner, str):
+                try:
+                    inner = json.loads(inner)
+                except Exception:
+                    return None
+            payload = inner
+            if not isinstance(payload, dict):
+                return None
+            continue
+        break
+    return payload
+
+
+def _post_media_to_ultracard_sync(
+    url: str,
+    token: str,
+    raw_bytes: bytes,
+    filename: str,
+    content_type: str,
+    field_name: str = "photo",
+) -> tuple[int, bytes]:
+    """POST multipart to WordPress using requests (reliable $_FILES vs aiohttp + HA session)."""
+    import io
+
+    import requests
+
+    field = (field_name or "photo").strip() or "photo"
+    files = {field: (filename, io.BytesIO(raw_bytes), content_type)}
+    r = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {token}"},
+        files=files,
+        timeout=120,
+    )
+    return r.status_code, r.content
+
+
+async def _post_media_multipart(
+    hass: HomeAssistant,
+    url: str,
+    token: str,
+    raw_bytes: bytes,
+    filename: str,
+    content_type: str,
+    field_name: str = "photo",
+) -> tuple[int, bytes]:
+    """Run blocking requests.post in HA executor."""
+    return await hass.async_add_executor_job(
+        _post_media_to_ultracard_sync,
+        url,
+        token,
+        raw_bytes,
+        filename,
+        content_type,
+        field_name,
+    )
 
 
 def _user_attrs_for_frontend(attrs: dict | None) -> dict:
@@ -368,7 +456,7 @@ class UltraCardProxyView(HomeAssistantView):
 
         method = (body.get("method") or "GET").upper()
         url = (body.get("url") or "").strip()
-        payload = body.get("body")
+        payload = _normalize_proxy_payload(body)
 
         if not url or not url.startswith(API_BASE_URL):
             return self.json({"error": "Invalid URL", "_status": 400, "_body": None}, status_code=400)
@@ -393,6 +481,35 @@ class UltraCardProxyView(HomeAssistantView):
                 async with session.get(url, headers=headers, timeout=aiohttp_timeout(30)) as resp:
                     return await _proxy_response(resp, self.json)
             if method == "POST":
+                # Multipart media upload encoded as base64 in JSON (fallback when
+                # /api/.../media_upload is missing on older integration builds).
+                if isinstance(payload, dict) and "__media_upload_b64" in payload:
+                    media_url = f"{API_BASE_URL}/ultra-card/v1/media"
+                    if url.rstrip("/") != media_url.rstrip("/"):
+                        return self.json(
+                            {"error": "Invalid URL for media upload", "_status": 400, "_body": None},
+                            status_code=400,
+                        )
+                    import base64
+
+                    spec = payload.get("__media_upload_b64") or {}
+                    try:
+                        raw_bytes = base64.b64decode(spec.get("data") or "")
+                    except Exception:
+                        return self.json({"message": "Invalid base64", "_status": 400, "_body": None}, status_code=400)
+                    if not raw_bytes:
+                        return self.json({"message": "Empty file data", "_status": 400, "_body": None}, status_code=400)
+                    fname = _safe_upload_filename(str(spec.get("filename") or "upload.bin"))
+                    ctype = (
+                        spec.get("content_type")
+                        or spec.get("contentType")
+                        or "application/octet-stream"
+                    )
+                    field_nm = str(spec.get("field") or "photo").strip() or "photo"
+                    http_status, raw = await _post_media_multipart(
+                        hass, url, token, raw_bytes, fname, ctype, field_nm
+                    )
+                    return await _proxy_response_from_bytes(http_status, raw, self.json)
                 async with session.post(url, headers=headers, json=payload, timeout=aiohttp_timeout(30)) as resp:
                     return await _proxy_response(resp, self.json)
             if method == "PUT":
@@ -408,17 +525,94 @@ class UltraCardProxyView(HomeAssistantView):
         return self.json({"error": "Method not allowed", "_status": 405, "_body": None}, status_code=405)
 
 
+class UltraCardMediaUploadView(HomeAssistantView):
+    """POST /api/ultra_card_pro_cloud/media_upload — forward multipart photo to ultracard.io.
+
+    The JSON-based proxy cannot carry binary FormData. When the Ultra Card frontend
+    uses Home Assistant integration auth (JWT only on the server), photo uploads must
+    use this endpoint so the file bytes reach WordPress with the integration token.
+    """
+
+    url = "/api/ultra_card_pro_cloud/media_upload"
+    name = "api:ultra_card_pro_cloud:media_upload"
+    requires_auth = True
+
+    async def post(self, request: web.Request) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+
+        entries = hass.config_entries.async_entries(DOMAIN)
+        if not entries:
+            return self.json({"message": "Integration not configured"}, status_code=503)
+
+        entry = entries[0]
+        domain_data = hass.data.get(DOMAIN, {})
+        entry_data = domain_data.get(entry.entry_id, {})
+        coordinator = entry_data.get(DATA_COORDINATOR)
+        if not coordinator or not getattr(coordinator, "_jwt_token", None):
+            return self.json({"message": "Not authenticated"}, status_code=401)
+
+        token = coordinator._jwt_token
+        reader = await request.multipart()
+        photo_bytes: bytes | None = None
+        filename = "upload.bin"
+        content_type = "application/octet-stream"
+
+        async for part in reader:
+            if part.name == "photo":
+                photo_bytes = await part.read(decode=False)
+                filename = _safe_upload_filename(part.filename or filename)
+                content_type = part.headers.get("Content-Type", "application/octet-stream")
+                break
+
+        if not photo_bytes:
+            return self.json({"message": "Missing photo field"}, status_code=400)
+
+        target_url = f"{API_BASE_URL}/ultra-card/v1/media"
+
+        try:
+            http_status, raw = await _post_media_multipart(
+                hass,
+                target_url,
+                token,
+                photo_bytes,
+                filename,
+                content_type,
+            )
+        except Exception as err:
+            logging.getLogger(__name__).exception("Media upload forward failed: %s", err)
+            return self.json({"message": str(err)}, status_code=502)
+
+        try:
+            body = json.loads(raw) if raw else None
+        except Exception:
+            body = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else None
+
+        if http_status >= 200 and http_status < 300:
+            return self.json(body if isinstance(body, dict) else {"data": body})
+        if isinstance(body, dict) and body.get("message"):
+            return self.json(body, status_code=http_status)
+        return self.json(
+            {"message": (body if isinstance(body, str) else None) or f"HTTP {http_status}"},
+            status_code=http_status,
+        )
+
+
 async def _proxy_response(resp, json_response_fn):
     """Read aiohttp response and return JSON with _status and _body for frontend."""
     try:
         raw = await resp.read()
     except Exception:
         raw = b""
+    return await _proxy_response_from_bytes(resp.status, raw, json_response_fn)
+
+
+async def _proxy_response_from_bytes(http_status: int, raw: bytes, json_response_fn):
+    """Build the same proxy payload from raw HTTP status + body bytes."""
     try:
         _body = json.loads(raw) if raw else None
     except Exception:
         _body = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else None
-    return json_response_fn({"_status": resp.status, "_body": _body})
+    return json_response_fn({"_status": http_status, "_body": _body})
 
 
 def aiohttp_timeout(seconds: int):
@@ -457,6 +651,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(UltraCardRegisterView())
     hass.http.register_view(UltraCardFavoriteColorsView())
     hass.http.register_view(UltraCardProxyView())
+    hass.http.register_view(UltraCardMediaUploadView())
 
     _LOGGER.info("Ultra Card Pro Cloud v%s component setup called", __version__)
 

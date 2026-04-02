@@ -2,6 +2,16 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [1.4.0] - 2026-04-02
+
+### Added
+- **Media upload endpoint** — New dedicated endpoint (`/api/ultra_card_pro_cloud/media_upload`) for forwarding multipart photo uploads to ultracard.io. The JSON-based proxy cannot carry binary FormData, so photo uploads now go through this endpoint which adds the integration token server-side and forwards the file using reliable `requests`-based multipart POST (avoids `aiohttp` + HA session issues with WordPress `$_FILES`).
+- **Base64 media upload via proxy** — The existing JSON proxy endpoint now also supports base64-encoded media uploads (`__media_upload_b64` payload) as a fallback for environments where the multipart endpoint isn't available.
+
+### Fixed
+- **Safe upload filenames** — Non-ASCII characters in uploaded filenames are now sanitized to prevent REST 400 errors on some WordPress setups.
+- **Improved proxy payload extraction** — The proxy now correctly handles deeply nested body wrappers from HA HTTP/WebSocket requests (string JSON, nested `body` keys, `data` fallbacks) with up to 4 levels of unwrapping.
+
 ## [1.3.0] - 2026-03-15
 
 ### Fixed
