@@ -63,6 +63,7 @@ Layout modules let you nest **rows / columns / modules** inside another module. 
 |---|---|
 | **[Module Horizontal](#uc-doc-module-horizontal)** | Place modules side-by-side **inside** a column with flex alignment. |
 | **[Module Vertical](#uc-doc-module-vertical)** | Stack modules vertically with explicit alignment / gap. |
+| **[Module Stack](#uc-doc-module-stack)** | Layer modules on top of each other with 9-point anchors, offsets, and z-index. |
 | **[Module Tabs](#uc-doc-module-tabs)** | Switchable tabbed sections, each containing its own modules. |
 | **[Module Accordion](#uc-doc-module-accordion)** | Collapsible header reveals nested modules. |
 | **[Module Popup](#uc-doc-module-popup)** | Modal popup container — content lives inside, trigger lives outside. |

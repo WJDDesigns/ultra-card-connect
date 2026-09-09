@@ -41,7 +41,7 @@ Ultra Card ships as **multiple JS files**, not a single bundle. They must all li
 1. From the [latest release](https://github.com/WJDDesigns/Ultra-Card/releases) download **all** release assets — not only `ultra-card.js`. Typical files:
    - `ultra-card.js` — main card bundle
    - `ultra-card.js.LICENSE.txt`
-   - `ultra-card-panel.js` — sidebar panel (only used with the Ultra Card Connect integration)
+   - `ultra-card-panel.js` — sidebar panel (only used with the Pro Cloud integration)
    - any `uc-*.js` chunks (lazy-loaded module chunks)
 2. Copy the entire folder into `config/www/ultra-card/` (or directly under `config/www/`).
 3. Add **one** Lovelace resource pointing at the **main** bundle:
@@ -56,11 +56,11 @@ Ultra Card ships as **multiple JS files**, not a single bundle. They must all li
 
 ## Optional: Pro features
 
-Pro features (cloud sync, daily backups, animated modules, video backgrounds, 3rd-party card integration) are unlocked via a free account at **[UltraCard.io](https://ultracard.io)** and the **Ultra Card Connect** integration:
+Pro features (cloud sync, daily backups, animated modules, video backgrounds, 3rd-party card integration) are unlocked via a free account at **[UltraCard.io](https://ultracard.io)** and the **Ultra Card Pro Cloud** integration:
 
-1. Install the **Ultra Card Connect** custom integration from HACS → Integrations.
+1. Install the **Ultra Card Pro Cloud** custom integration from HACS → Integrations.
 2. Restart Home Assistant.
-3. Sign in via **Settings → Devices & services → Add integration → Ultra Card Connect**.
+3. Sign in via **Settings → Devices & services → Add integration → Ultra Card Pro Cloud**.
 
 See [Pro and Cloud](#uc-doc-pro-and-cloud) for the full breakdown.
 

@@ -27,6 +27,8 @@ Carousel/slideshow container — multiple pages of nested modules, swipeable on 
 - **Touch / drag** — enable swipe gestures
 - **Transition** — slide / fade / scale
 
+> **iOS / Safari:** Swipe recovery was improved in v3.5 — if a gesture ends mid-slide, the carousel now snaps to the nearest page instead of staying stuck between slides.
+
 ### Pagination
 
 Use **[Module Pagebreak](#uc-doc-module-pagebreak)** modules inside the Slider to mark page boundaries. Each page can contain any modules.

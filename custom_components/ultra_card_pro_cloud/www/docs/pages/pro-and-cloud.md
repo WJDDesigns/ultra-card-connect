@@ -56,9 +56,9 @@ Pro requires two pieces, both available in HACS:
 
 ### 2. Ultra Card Connect integration
 
-The **integration** is a separate custom HA component that brokers communication between your HA instance and the cloud:
+The **integration** is a separate custom HA component that brokers communication between your HA instance and the cloud, and serves the **Ultra Card Hub** sidebar:
 
-1. **HACS → Integrations → Add custom repository** → `WJDDesigns/Ultra-Card-Pro-Cloud`, category **Integration**.
+1. **HACS → Integrations → Add custom repository** → `WJDDesigns/ultra-card-connect`, category **Integration**.
 2. Install **Ultra Card Connect**.
 3. **Restart Home Assistant**.
 4. **Settings → Devices & services → Add integration → Ultra Card Connect**.
@@ -68,7 +68,7 @@ After sign-in:
 
 - The card editor shows your account in the top-right.
 - Pro modules are unlocked.
-- The **Ultra Card Hub** sidebar panel appears (served by the integration, not by HACS — it's why updating only the card doesn't update the Hub).
+- The **Ultra Card Hub** sidebar panel appears (served by the integration, not by HACS — it's why updating only the card doesn't update the Hub). See [Ultra Card Hub](#uc-doc-ultra-card-hub).
 - Cloud sync / backups / snapshots run in the background.
 
 ---
@@ -114,6 +114,6 @@ If you cancel Pro, your existing data on ultracard.io stays for 30 days then is 
 | Pro modules show "Sign in to use" | Integration not installed or signed-out. Re-add the integration. |
 | Sidebar Hub missing | Update the **integration** (HACS), not just the card. The Hub ships from the integration. |
 | Sync paused | Click the cloud icon in the editor — it shows the last sync error. Re-auth if needed. |
-| Backups not running | Check **Settings → Devices & services → Ultra Card Connect → Configure → Snapshot schedule**. |
+| Backups not running | Check **Settings → Devices & services → Ultra Card Pro Cloud → Configure → Snapshot schedule**. |
 
 For other issues: [FAQ and Troubleshooting](#uc-doc-faq-and-troubleshooting) or hit Discord (priority support for Pro members).

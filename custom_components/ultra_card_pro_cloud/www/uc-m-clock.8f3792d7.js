@@ -1,0 +1,42 @@
+export const __webpack_esm_ids__=[5361];export const __webpack_esm_modules__={5406(e,t,i){i.d(t,{UltraClockModule:()=>s});var o=i(2618),r=i(7475),l=i(6478),a=i(5147),n=i(8938);i(7921);class s extends r.m{constructor(){super(...arguments),this.metadata={type:"clock",title:"Digital Clock",description:"Clean digital clock with date, 12/24h formats, and timezone support",author:"WJD Designs",version:"1.0.0",icon:"mdi:clock-digital",category:"content",tags:["clock","time","date","digital","timezone"]},this._tickTimer=null,this._tickSeconds=!1}createDefault(e){return{id:e||this.generateId("clock"),type:"clock",time_format:"12",show_seconds:!1,show_ampm:!0,show_date:!0,date_style:"long",timezone:"",alignment:"center",time_size:48,date_size:16,time_color:"",date_color:"",time_weight:"bold",tap_action:{action:"nothing"},hold_action:{action:"nothing"},double_tap_action:{action:"nothing"},display_mode:"always",display_conditions:[]}}renderActionsTab(e,t,i,o){return a.A.render(e,t,e=>o(e))}renderOtherTab(e,t,i,o){return n.X.render(e,t,e=>o(e))}renderGeneralTab(e,t,i,r){var a,n,s;const d=e,c=(null===(a=null==t?void 0:t.locale)||void 0===a?void 0:a.language)||"en";return o.qy`
+      ${this.injectUcFormStyles()}
+      <div class="module-general-settings">
+        ${this.renderSegmentedField((0,l.kg)("editor.clock.time_format",c,"Time format"),"",d.time_format||"12",[{value:"12",label:(0,l.kg)("editor.clock.format_12",c,"12-hour")},{value:"24",label:(0,l.kg)("editor.clock.format_24",c,"24-hour")}],e=>{r({time_format:e}),this.triggerPreviewUpdate()})}
+        ${this.renderSettingsSection((0,l.kg)("editor.clock.section_display",c,"Display"),(0,l.kg)("editor.clock.section_display_desc",c,"What the clock shows."),[{title:(0,l.kg)("editor.clock.show_seconds",c,"Show seconds"),description:(0,l.kg)("editor.clock.show_seconds_desc",c,"Tick every second."),hass:t,data:{show_seconds:!!d.show_seconds},schema:[this.booleanField("show_seconds")],onChange:e=>{r({show_seconds:e.detail.value.show_seconds}),this.triggerPreviewUpdate()}},{title:(0,l.kg)("editor.clock.show_ampm",c,"Show AM/PM"),description:(0,l.kg)("editor.clock.show_ampm_desc",c,"Only applies to the 12-hour format."),hass:t,data:{show_ampm:!1!==d.show_ampm},schema:[this.booleanField("show_ampm")],onChange:e=>{r({show_ampm:e.detail.value.show_ampm}),this.triggerPreviewUpdate()}},{title:(0,l.kg)("editor.clock.show_date",c,"Show date"),description:(0,l.kg)("editor.clock.show_date_desc",c,"Date line under the time."),hass:t,data:{show_date:!1!==d.show_date},schema:[this.booleanField("show_date")],onChange:e=>{r({show_date:e.detail.value.show_date}),this.triggerPreviewUpdate()}}])}
+        ${!1!==d.show_date?this.renderFieldSection((0,l.kg)("editor.clock.date_style",c,"Date style"),(0,l.kg)("editor.clock.date_style_desc",c,"How the date is written."),t,{date_style:d.date_style||"long"},[this.selectField("date_style",[{value:"long",label:(0,l.kg)("editor.clock.date_long",c,"Friday, June 12")},{value:"short",label:(0,l.kg)("editor.clock.date_short",c,"Fri, Jun 12")},{value:"numeric",label:(0,l.kg)("editor.clock.date_numeric",c,"6/12/2026")}])],e=>{r({date_style:e.detail.value.date_style}),this.triggerPreviewUpdate()}):o.s6}
+        ${this.renderFieldSection((0,l.kg)("editor.clock.timezone",c,"Timezone"),(0,l.kg)("editor.clock.timezone_desc",c,"Optional IANA timezone (e.g. Europe/London). Leave blank for local time."),t,{timezone:d.timezone||""},[this.textField("timezone")],e=>{r({timezone:e.detail.value.timezone}),this.triggerPreviewUpdate()})}
+        ${this.renderSegmentedField((0,l.kg)("editor.clock.alignment",c,"Alignment"),"",d.alignment||"center",[{value:"left",label:(0,l.kg)("editor.clock.align_left",c,"Left"),icon:"mdi:format-align-left"},{value:"center",label:(0,l.kg)("editor.clock.align_center",c,"Center"),icon:"mdi:format-align-center"},{value:"right",label:(0,l.kg)("editor.clock.align_right",c,"Right"),icon:"mdi:format-align-right"}],e=>{r({alignment:e}),this.triggerPreviewUpdate()})}
+        ${this.renderSliderField((0,l.kg)("editor.clock.time_size",c,"Time size"),"",null!==(n=d.time_size)&&void 0!==n?n:48,48,16,160,1,e=>{r({time_size:e}),this.triggerPreviewUpdate()},"px")}
+        ${this.renderSliderField((0,l.kg)("editor.clock.date_size",c,"Date size"),"",null!==(s=d.date_size)&&void 0!==s?s:16,16,10,60,1,e=>{r({date_size:e}),this.triggerPreviewUpdate()},"px")}
+        ${this.renderFieldSection((0,l.kg)("editor.clock.time_weight",c,"Time weight"),"",t,{time_weight:d.time_weight||"bold"},[this.selectField("time_weight",[{value:"normal",label:(0,l.kg)("editor.clock.weight_normal",c,"Normal")},{value:"medium",label:(0,l.kg)("editor.clock.weight_medium",c,"Medium")},{value:"bold",label:(0,l.kg)("editor.clock.weight_bold",c,"Bold")}])],e=>{r({time_weight:e.detail.value.time_weight}),this.triggerPreviewUpdate()})}
+        ${this.renderColorField((0,l.kg)("editor.clock.time_color",c,"Time color"),"",t,d.time_color||"","var(--primary-text-color)",e=>{r({time_color:e}),this.triggerPreviewUpdate()})}
+        ${this.renderColorField((0,l.kg)("editor.clock.date_color",c,"Date color"),"",t,d.date_color||"","var(--secondary-text-color)",e=>{r({date_color:e}),this.triggerPreviewUpdate()})}
+      </div>
+    `}renderPreview(e,t,i,r){var l,a,n,s,d,c;const m=e,h=(null===(l=null==t?void 0:t.locale)||void 0===l?void 0:l.language)||"en",g=this.buildStyleString(this.buildDesignStyles(e,t)),_=this.getHoverEffectClass(e);this._ensureTick(!!m.show_seconds);const u=new Date,k=(null===(a=m.timezone)||void 0===a?void 0:a.trim())||void 0,p="12"===(m.time_format||"12");let w,v="";try{const e=new Intl.DateTimeFormat(h,Object.assign(Object.assign(Object.assign({hour:"numeric",minute:"2-digit"},m.show_seconds?{second:"2-digit"}:{}),{hour12:p}),k?{timeZone:k}:{})).formatToParts(u);w=e.filter(e=>"dayPeriod"!==e.type).map(e=>e.value).join("").trim(),v=(null===(n=e.find(e=>"dayPeriod"===e.type))||void 0===n?void 0:n.value)||""}catch(e){w=u.toLocaleTimeString(h,{hour:"numeric",minute:"2-digit",hour12:p})}let y="";if(!1!==m.show_date){const e=m.date_style||"long",t="long"===e?{weekday:"long",month:"long",day:"numeric"}:"short"===e?{weekday:"short",month:"short",day:"numeric"}:{year:"numeric",month:"numeric",day:"numeric"};try{y=new Intl.DateTimeFormat(h,Object.assign(Object.assign({},t),k?{timeZone:k}:{})).format(u)}catch(e){y=new Intl.DateTimeFormat(h,t).format(u)}}const b=m.alignment||"center",$=m.time_color||"var(--primary-text-color)",f=m.date_color||"var(--secondary-text-color)",z="normal"===m.time_weight?"400":"medium"===m.time_weight?"600":"700",T=this.createGestureHandlers(m.id,{tap_action:m.tap_action,hold_action:m.hold_action,double_tap_action:m.double_tap_action,module:m},t,i);return o.qy`
+      <div
+        class="uc-clock-wrapper ${_}"
+        style="text-align:${b};${g}"
+        @pointerdown=${T.onPointerDown}
+        @pointermove=${T.onPointerMove}
+        @pointerup=${T.onPointerUp}
+        @pointerleave=${T.onPointerLeave}
+        @pointercancel=${T.onPointerCancel}
+        @keydown=${T.onKeyDown}
+        role=${T.isActionable?"button":o.s6}
+        tabindex=${T.isActionable?"0":o.s6}
+      >
+        ${this.wrapWithAnimation(o.qy`
+            <div
+              style="font-size:${null!==(s=m.time_size)&&void 0!==s?s:48}px;font-weight:${z};color:${$};line-height:1.1;font-variant-numeric:tabular-nums;"
+            >
+              ${w}${p&&!1!==m.show_ampm&&v?o.qy`<span
+                    style="font-size:${Math.round(.4*(null!==(d=m.time_size)&&void 0!==d?d:48))}px;font-weight:600;margin-left:6px;vertical-align:baseline;"
+                    >${v}</span
+                  >`:o.s6}
+            </div>
+            ${y?o.qy`<div style="font-size:${null!==(c=m.date_size)&&void 0!==c?c:16}px;color:${f};margin-top:4px;">
+                  ${y}
+                </div>`:o.s6}
+          `,e,t)}
+      </div>
+    `}_ensureTick(e){this._tickTimer&&this._tickSeconds===e||(this._tickTimer&&clearInterval(this._tickTimer),this._tickSeconds=e,this._tickTimer=setInterval(()=>this.triggerPreviewUpdate(),e?1e3:15e3))}destroy(){this._tickTimer&&(clearInterval(this._tickTimer),this._tickTimer=null)}validate(e){const t=[];return e.id||t.push("Module ID is required"),e.type||t.push("Module type is required"),{valid:0===t.length,errors:t}}getStyles(){return`\n      .uc-clock-wrapper { box-sizing: border-box; }\n      ${r.m.getSliderStyles()}\n    `}}}};

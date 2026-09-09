@@ -9,46 +9,20 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, DATA_COORDINATOR, INTEGRATION_CAPABILITIES
+from .const import (
+    DOMAIN,
+    DATA_COORDINATOR,
+    INTEGRATION_CAPABILITIES,
+    INTEGRATION_VERSION,  # noqa: F401 - re-exported for diagnostics.py
+)
 from .coordinator import UltraCardProCloudCoordinator
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _read_integration_version() -> str:
-    """Read version from manifest.json (always present in HACS installs)."""
-    import json
-    import os
-
-    manifest_path = os.path.join(os.path.dirname(__file__), "manifest.json")
-    try:
-        with open(manifest_path, encoding="utf-8") as handle:
-            data = json.load(handle)
-        version = data.get("version")
-        if isinstance(version, str) and version.strip():
-            return version.strip()
-    except Exception:  # pragma: no cover - never break sensor setup
-        _LOGGER.debug("Could not read integration version from manifest.json", exc_info=True)
-
-    # Dev checkout fallback: repo-root version.py
-    try:
-        version_file = os.path.join(os.path.dirname(__file__), "..", "..", "version.py")
-        if os.path.exists(version_file):
-            with open(version_file, encoding="utf-8") as handle:
-                for line in handle:
-                    if line.startswith("__version__"):
-                        return line.split("=", 1)[1].strip().strip('"').strip("'")
-    except Exception:  # pragma: no cover
-        pass
-    return "0.0.0"
-
-
-INTEGRATION_VERSION = _read_integration_version()
 
 
 async def async_setup_entry(

@@ -9,9 +9,9 @@ import aiohttp
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     SelectSelector,
@@ -28,6 +28,7 @@ from .const import (
     ERROR_CANNOT_CONNECT,
     ERROR_UNKNOWN,
 )
+from .coordinator import _retry_after_seconds
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -97,11 +98,12 @@ async def validate_auth(
             ) as response:
                 response_text = await response.text()
                 _LOGGER.debug("📥 Auth response status: %s", response.status)
-                _LOGGER.debug("📥 Auth response (first 500 chars): %s", response_text[:500])
-                
+                # Never log the body here: a 2xx body contains the JWT.
+                _LOGGER.debug("📥 Auth response length: %d bytes", len(response_text))
+
                 # Handle rate limiting (JWT Auth Pro feature)
                 if response.status == 429:
-                    retry_after = int(response.headers.get("Retry-After", RATE_LIMIT_DELAY))
+                    retry_after = _retry_after_seconds(response)
                     _LOGGER.warning("⏳ Rate limited, waiting %s seconds before retry (attempt %d/%d)", 
                                    retry_after, attempt + 1, MAX_RETRIES)
                     await asyncio.sleep(retry_after)
@@ -231,7 +233,7 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Show menu: Sign In or Set Up Without Account."""
         if user_input is None and self.hass.config_entries.async_entries(DOMAIN):
             return self.async_abort(reason="already_configured")
@@ -255,7 +257,7 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_credentials(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle username/password step."""
         errors: dict[str, str] = {}
 
@@ -295,7 +297,7 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user_api(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Programmatic entry creation from the frontend HTTP API view.
 
         Called with data={CONF_USERNAME: ..., CONF_PASSWORD: ...} already
@@ -312,9 +314,12 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             info = await validate_auth(self.hass, username, password)
-        except (InvalidAuth, CannotConnect) as err:
-            _LOGGER.warning("API-initiated auth failed: %s", err)
+        except InvalidAuth:
+            _LOGGER.warning("API-initiated sign-in rejected: invalid credentials")
             return self.async_abort(reason="invalid_auth")
+        except CannotConnect:
+            _LOGGER.warning("API-initiated sign-in failed: cannot reach ultracard.io")
+            return self.async_abort(reason="cannot_connect")
 
         await self.async_set_unique_id(username.lower())
         self._abort_if_unique_id_configured()
@@ -324,13 +329,13 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data={CONF_USERNAME: username, CONF_PASSWORD: password},
         )
 
-    async def async_step_reauth(self, entry_data: dict[str, Any]) -> FlowResult:
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
         """Handle reauth flow."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle reauth confirmation."""
         errors: dict[str, str] = {}
 
@@ -346,7 +351,12 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self.context["entry_id"]
                 )
                 if entry:
-                    self.hass.config_entries.async_update_entry(entry, data=user_input)
+                    # Users may sign in with either username or email, and the
+                    # Hub's own sign-in never touches unique_id, so the account
+                    # is not pinned here; merge so unrelated entry data survives.
+                    self.hass.config_entries.async_update_entry(
+                        entry, data={**entry.data, **user_input}
+                    )
                     await self.hass.config_entries.async_reload(entry.entry_id)
                     _LOGGER.debug("✅ Re-authentication successful")
                     return self.async_abort(reason="reauth_successful")

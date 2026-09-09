@@ -42,6 +42,10 @@ Progress bars with animations, gradients, side labels, and template support.
 - **Charging** stripes
 - **Pulse**, **glow**, **rainbow**, **bubbles**, **heartbeat**
 - **Triggers** — always, by entity state, attribute, or override conditions
+- **Animation direction** — normal, reverse, or driven by a sensor (entity + optional attribute)
+- **Animation speed** — fixed multiplier, or driven by a sensor with optional multiplier
+
+Direction and speed use CSS custom properties at runtime, so charging stripes can reverse when a battery is discharging or speed up when power draw increases.
 
 ### Actions / Logic / Design
 

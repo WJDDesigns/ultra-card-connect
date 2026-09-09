@@ -45,6 +45,26 @@ class BotChallengeError(UpdateFailed):
     """Raised when edge bot protection blocks access to the ultracard.io API."""
 
 
+MAX_RETRY_AFTER = 30  # seconds; never sleep longer than this inside an update
+
+
+def _retry_after_seconds(response: aiohttp.ClientResponse) -> int:
+    """Parse Retry-After (seconds or HTTP-date) and clamp it to a sane range."""
+    raw = response.headers.get("Retry-After")
+    seconds: float = RATE_LIMIT_DELAY
+    if raw:
+        try:
+            seconds = float(raw)
+        except ValueError:
+            try:
+                from email.utils import parsedate_to_datetime
+
+                seconds = parsedate_to_datetime(raw).timestamp() - time.time()
+            except Exception:
+                seconds = RATE_LIMIT_DELAY
+    return int(max(1, min(seconds, MAX_RETRY_AFTER)))
+
+
 def _get_timeout() -> aiohttp.ClientTimeout:
     """Get standard timeout configuration."""
     return aiohttp.ClientTimeout(total=REQUEST_TIMEOUT, connect=CONNECT_TIMEOUT)
@@ -94,12 +114,36 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         self._last_successful_data: dict[str, Any] | None = None
         self._last_successful_time: float = 0
 
+        # Pass the entry explicitly: relying on the ContextVar was deprecated in
+        # HA 2024.11 and removed later.
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name="Ultra Card Connect",
             update_interval=timedelta(seconds=TOKEN_REFRESH_INTERVAL),
         )
+
+    def reset_auth_state(self) -> None:
+        """Forget tokens and failure bookkeeping so the next refresh signs in fresh.
+
+        Used when the Hub stores new credentials: the old JWT (if any) belongs
+        to the previous account, the reauth flag would suppress a new repair
+        if the fresh credentials are also wrong, and the grace-period cache
+        must not keep the previous account's Pro tier alive.
+        """
+        self._jwt_token = None
+        self._refresh_token = None
+        self._token_expires_at = 0
+        self._auth_failure_count = 0
+        self._reauth_requested = False
+        self._last_error = None
+        self._last_successful_data = None
+        self._last_successful_time = 0
+
+    def is_invalid_credentials_error(self, err: Exception) -> bool:
+        """Public wrapper so setup code can classify first-refresh failures."""
+        return self._is_invalid_credentials_error(err)
 
     def _get_cached_data_if_valid(self) -> dict[str, Any] | None:
         """Return cached auth data if within grace period, None otherwise.
@@ -218,9 +262,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 },
             }
             
-            # Reset failure count on success
+            # Reset failure bookkeeping on success
             self._auth_failure_count = 0
             self._reauth_requested = False
+            self._last_error = None
 
             # Cache successful auth for grace period during future outages
             self._last_successful_data = result.copy()
@@ -302,6 +347,16 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             self._auth_failure_count += 1
             _LOGGER.error("Update failed: %s", err)
 
+            # The fetch helpers wrap aiohttp connection errors in UpdateFailed,
+            # so transient outages land here rather than in the aiohttp
+            # branches above. Honour the grace period for anything that is not
+            # a definitive "your credentials are wrong"; a bot-wall is an
+            # upstream outage too and _last_error still records it.
+            if not self._is_invalid_credentials_error(err):
+                cached = self._get_cached_data_if_valid()
+                if cached:
+                    return cached
+
             if self._auth_failure_count >= 3:
                 _LOGGER.warning(
                     "Multiple auth failures (%d), clearing tokens for fresh start",
@@ -354,7 +409,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 ) as response:
                     response_text = await response.text()
                     _LOGGER.debug("📥 Auth response status: %s", response.status)
-                    _LOGGER.debug("📥 Auth response body: %s", response_text[:500])
+                    _LOGGER.debug("📥 Auth response length: %d bytes", len(response_text))
                     
                     # Challenge pages never reach WordPress. Retrying cannot
                     # succeed. Fail fast with a generic user-facing message.
@@ -368,7 +423,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
 
                     # Handle rate limiting (JWT Auth Pro feature)
                     if response.status == 429:
-                        retry_after = int(response.headers.get("Retry-After", RATE_LIMIT_DELAY))
+                        retry_after = _retry_after_seconds(response)
                         _LOGGER.warning("⏳ Rate limited, waiting %s seconds before retry", retry_after)
                         await asyncio.sleep(retry_after)
                         continue
@@ -507,7 +562,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             ) as response:
                 response_text = await response.text()
                 _LOGGER.debug("📥 Refresh response status: %s", response.status)
-                _LOGGER.debug("📥 Refresh response body: %s", response_text[:500])
+                _LOGGER.debug("📥 Refresh response length: %d bytes", len(response_text))
 
                 if _is_bot_challenge(response, response_text):
                     _LOGGER.error(
@@ -519,7 +574,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
 
                 # Handle rate limiting
                 if response.status == 429:
-                    retry_after = int(response.headers.get("Retry-After", RATE_LIMIT_DELAY))
+                    retry_after = _retry_after_seconds(response)
                     _LOGGER.warning("⏳ Rate limited during refresh, waiting %s seconds", retry_after)
                     await asyncio.sleep(retry_after)
                     # Re-authenticate instead of retrying refresh
@@ -605,7 +660,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                     
                     # Handle rate limiting
                     if response.status == 429:
-                        retry_after = int(response.headers.get("Retry-After", RATE_LIMIT_DELAY))
+                        retry_after = _retry_after_seconds(response)
                         _LOGGER.warning("⏳ Rate limited, waiting %s seconds", retry_after)
                         await asyncio.sleep(retry_after)
                         continue
@@ -671,7 +726,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                     
                     # Handle rate limiting
                     if response.status == 429:
-                        retry_after = int(response.headers.get("Retry-After", RATE_LIMIT_DELAY))
+                        retry_after = _retry_after_seconds(response)
                         _LOGGER.warning("⏳ Rate limited, waiting %s seconds", retry_after)
                         await asyncio.sleep(retry_after)
                         continue
@@ -873,9 +928,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 except Exception as err:
                     _LOGGER.debug("⚠️ Could not revoke token via %s: %s", url, err)
 
-        # Clear local tokens
-        self._jwt_token = None
-        self._refresh_token = None
-        self._token_expires_at = 0
-        self._auth_failure_count = 0
-        _LOGGER.debug("✅ Local tokens cleared")
+        # Clear local tokens, the stale reauth flag / last error, and the
+        # grace-period cache (otherwise Pro access could survive a sign-out).
+        self.reset_auth_state()
+        _LOGGER.debug("✅ Local auth state cleared")

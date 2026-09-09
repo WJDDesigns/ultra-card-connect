@@ -32,7 +32,10 @@
     },
     "abort": {
       "already_configured": "This account is already configured.",
-      "reauth_successful": "Reauthentication successful!"
+      "reauth_successful": "Reauthentication successful!",
+      "invalid_auth": "Invalid username or password. Please check your credentials.",
+      "cannot_connect": "Cannot connect to ultracard.io. Please check your internet connection and try again.",
+      "unknown": "An unexpected error occurred. Please try again."
     }
   }
 }

@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
+import re
 import secrets
 from pathlib import Path
 from typing import Any
@@ -12,11 +12,14 @@ from datetime import datetime, timezone
 
 from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Context, HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from .const import (
     API_BASE_URL,
@@ -25,6 +28,7 @@ from .const import (
     DOMAIN,
     DATA_COORDINATOR,
     DATA_AUTH,
+    INTEGRATION_VERSION,
     PANEL_URL_PATH,
     PANEL_JS_URL,
     PANEL_STATIC_URL_PATH,
@@ -117,15 +121,48 @@ def _request_can_manage_shared_auth(request: web.Request) -> bool:
     return bool(getattr(user, "is_admin", False) or getattr(user, "is_owner", False))
 
 
+def _get_entry_coordinator(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> UltraCardProCloudCoordinator | None:
+    """Return the coordinator for a config entry, or None if it is not loaded."""
+    domain_data = hass.data.get(DOMAIN, {})
+    entry_data = domain_data.get(entry.entry_id, {})
+    return entry_data.get(DATA_COORDINATOR)
+
+
 def _get_primary_coordinator(hass: HomeAssistant):
     """Return the first configured coordinator instance (if any)."""
     entries = hass.config_entries.async_entries(DOMAIN)
     if not entries:
         return None
-    entry = entries[0]
-    domain_data = hass.data.get(DOMAIN, {})
-    entry_data = domain_data.get(entry.entry_id, {})
-    return entry_data.get(DATA_COORDINATOR)
+    return _get_entry_coordinator(hass, entries[0])
+
+
+def _abort_reauth_flows(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Dismiss any in-progress reauth flow for the entry.
+
+    The Hub's sign-in / sign-out endpoints replace or remove the stored
+    credentials directly, so a pending "reauthenticate" repair would only
+    confuse the user.
+    """
+    try:
+        flows = hass.config_entries.flow.async_progress_by_handler(
+            DOMAIN,
+            match_context={"source": SOURCE_REAUTH, "entry_id": entry.entry_id},
+        )
+    except TypeError:
+        # Older cores without match_context support.
+        flows = [
+            flow
+            for flow in hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+            if flow.get("context", {}).get("source") == SOURCE_REAUTH
+            and flow.get("context", {}).get("entry_id") == entry.entry_id
+        ]
+    for flow in flows:
+        try:
+            hass.config_entries.flow.async_abort(flow["flow_id"])
+        except Exception as err:  # pragma: no cover - best effort
+            _LOGGER.debug("Could not abort reauth flow %s: %s", flow.get("flow_id"), err)
 
 
 # ---------------------------------------------------------------------------
@@ -136,12 +173,27 @@ def _get_primary_coordinator(hass: HomeAssistant):
 # ---------------------------------------------------------------------------
 
 AUTH_SENSOR_ID = "sensor.ultra_card_pro_cloud_authentication_status"
+# Deliberately loose: WordPress does the authoritative validation; this only
+# keeps obvious garbage from being relayed to ultracard.io.
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # Wait for coordinator to finish auth and sensor to update (avoids "succeeds on 3rd attempt" race)
 AUTH_SENSOR_WAIT_TIMEOUT = 15  # seconds
 AUTH_SENSOR_POLL_INTERVAL = 0.5  # seconds
 SMART_QUOTA_STORAGE_KEY = "ultra_card_pro_cloud.smart_generation_quotas"
 SMART_QUOTA_STORAGE_VERSION = 1
 SMART_FREE_DAILY_GENERATION_LIMIT = 5
+SMART_PROMPT_MAX_LENGTH = 4000
+# Serialises read-modify-write of the quota store so concurrent requests
+# cannot both read "4 used" and both write "5 used".
+_SMART_QUOTA_LOCK_KEY = f"{DOMAIN}_smart_quota_lock"
+
+
+def _smart_quota_lock(hass: HomeAssistant) -> asyncio.Lock:
+    """Return the per-instance lock guarding the Smart quota store."""
+    lock = hass.data.get(_SMART_QUOTA_LOCK_KEY)
+    if lock is None:
+        lock = hass.data[_SMART_QUOTA_LOCK_KEY] = asyncio.Lock()
+    return lock
 
 
 def _quota_user_key(user_id: str | None) -> str:
@@ -184,24 +236,25 @@ async def _consume_free_quota_generation(
     hass: HomeAssistant, user_id: str | None
 ) -> dict[str, Any]:
     """Consume one free generation and return updated limits."""
-    store = Store(hass, SMART_QUOTA_STORAGE_VERSION, SMART_QUOTA_STORAGE_KEY)
-    data = await store.async_load()
-    payload = data if isinstance(data, dict) else {}
-    users = payload.get("users") if isinstance(payload.get("users"), dict) else {}
+    async with _smart_quota_lock(hass):
+        store = Store(hass, SMART_QUOTA_STORAGE_VERSION, SMART_QUOTA_STORAGE_KEY)
+        data = await store.async_load()
+        payload = data if isinstance(data, dict) else {}
+        users = payload.get("users") if isinstance(payload.get("users"), dict) else {}
 
-    today = _quota_today_utc_iso()
-    key = _quota_user_key(user_id)
-    bucket = users.get(key)
-    used = 0
-    if isinstance(bucket, dict) and bucket.get("date") == today:
-        bucket_used = bucket.get("free_used")
-        if isinstance(bucket_used, int) and bucket_used > 0:
-            used = bucket_used
+        today = _quota_today_utc_iso()
+        key = _quota_user_key(user_id)
+        bucket = users.get(key)
+        used = 0
+        if isinstance(bucket, dict) and bucket.get("date") == today:
+            bucket_used = bucket.get("free_used")
+            if isinstance(bucket_used, int) and bucket_used > 0:
+                used = bucket_used
 
-    used += 1
-    users[key] = {"date": today, "free_used": used}
-    payload["users"] = users
-    await store.async_save(payload)
+        used += 1
+        users[key] = {"date": today, "free_used": used}
+        payload["users"] = users
+        await store.async_save(payload)
 
     free_remaining = max(0, SMART_FREE_DAILY_GENERATION_LIMIT - used)
     return {
@@ -270,15 +323,20 @@ class UltraCardLoginView(HomeAssistantView):
                 entry,
                 data={**entry.data, CONF_USERNAME: username, CONF_PASSWORD: password},
             )
-            # Force the coordinator to re-authenticate with fresh credentials
-            domain_data = hass.data.get(DOMAIN, {})
-            entry_data = domain_data.get(entry.entry_id, {})
-            coordinator = entry_data.get(DATA_COORDINATOR)
+            # A pending "reauthenticate" repair is now stale: the user just
+            # supplied fresh credentials through the Hub.
+            _abort_reauth_flows(hass, entry)
+
+            coordinator = _get_entry_coordinator(hass, entry)
             if coordinator:
-                coordinator._jwt_token = None
-                coordinator._refresh_token = None
-                coordinator._token_expires_at = 0
+                # Force the coordinator to re-authenticate with fresh credentials
+                coordinator.reset_auth_state()
                 await coordinator.async_refresh()
+            else:
+                # Entry never finished setup (e.g. it is in SETUP_RETRY after a
+                # bad first refresh). Reload so the new credentials are used now
+                # instead of waiting for HA's retry back-off.
+                await hass.config_entries.async_reload(entry.entry_id)
         else:
             # No config entry yet — create one via the config flow
             result = await hass.config_entries.flow.async_init(
@@ -286,7 +344,24 @@ class UltraCardLoginView(HomeAssistantView):
                 context={"source": "user_api"},
                 data={CONF_USERNAME: username, CONF_PASSWORD: password},
             )
-            if result.get("type") not in ("create_entry", "abort"):
+            result_type = str(result.get("type") or "")
+            if result_type == "abort":
+                reason = str(result.get("reason") or "")
+                if reason == "invalid_auth":
+                    return self.json(
+                        {"error": "Invalid ultracard.io username or password."},
+                        status_code=401,
+                    )
+                if reason == "cannot_connect":
+                    return self.json(
+                        {"error": "Cannot reach ultracard.io — check your network and try again."},
+                        status_code=502,
+                    )
+                return self.json(
+                    {"error": f"Could not set up Ultra Card Connect ({reason or 'unknown'})."},
+                    status_code=500,
+                )
+            if result_type != "create_entry":
                 return self.json({"error": "Failed to create integration entry"}, status_code=500)
 
         # Wait for coordinator to finish and sensor to show connected (fixes race where
@@ -347,13 +422,13 @@ class UltraCardLogoutView(HomeAssistantView):
                 if k not in (CONF_USERNAME, CONF_PASSWORD)
             }
             hass.config_entries.async_update_entry(entry, data=clean_data)
-            domain_data = hass.data.get(DOMAIN, {})
-            entry_data = domain_data.get(entry.entry_id, {})
-            coordinator = entry_data.get(DATA_COORDINATOR)
+            # Signing out also dismisses any pending reauth repair for this entry.
+            _abort_reauth_flows(hass, entry)
+            coordinator = _get_entry_coordinator(hass, entry)
             if coordinator:
-                coordinator._jwt_token = None
-                coordinator._refresh_token = None
-                coordinator._token_expires_at = 0
+                # Revoke the token server-side and clear local auth state, then
+                # refresh so the sensor flips to "disconnected" immediately.
+                await coordinator.async_logout()
                 await coordinator.async_refresh()
         return self.json({"success": True})
 
@@ -372,12 +447,18 @@ class UltraCardRegisterView(HomeAssistantView):
         except Exception:
             return self.json({"error": "Invalid JSON"}, status_code=400)
 
-        username = (body.get("username") or "").strip()
-        email = (body.get("email") or "").strip()
-        display_name = (body.get("display_name") or username or email.split("@")[0]).strip()
+        if not isinstance(body, dict):
+            return self.json({"error": "Request body must be an object"}, status_code=400)
+        username = str(body.get("username") or "").strip()
+        email = str(body.get("email") or "").strip()
+        display_name = str(body.get("display_name") or username or email.split("@")[0]).strip()
 
         if not username or not email:
             return self.json({"error": "username and email are required"}, status_code=400)
+        if max(len(username), len(email), len(display_name)) > 254:
+            return self.json({"error": "username, email or display name is too long"}, status_code=400)
+        if not _EMAIL_RE.match(email):
+            return self.json({"error": "Please enter a valid email address"}, status_code=400)
 
         # Register on ultracard.io via our custom WordPress endpoint
         session = async_get_clientsession(hass)
@@ -441,6 +522,8 @@ class UltraCardRegisterView(HomeAssistantView):
 # Favorite colors storage key and version (persisted in HA .storage)
 FAVORITE_COLORS_STORAGE_KEY = "ultra_card_pro_cloud.favorite_colors"
 FAVORITE_COLORS_STORAGE_VERSION = 1
+FAVORITE_COLORS_MAX_ITEMS = 500
+FAVORITE_COLORS_MAX_FIELD = 256
 
 
 class UltraCardFavoriteColorsView(HomeAssistantView):
@@ -469,6 +552,11 @@ class UltraCardFavoriteColorsView(HomeAssistantView):
         colors = body.get("colors") if isinstance(body, dict) else body
         if not isinstance(colors, list):
             return self.json({"error": "colors must be an array"}, status_code=400)
+        if len(colors) > FAVORITE_COLORS_MAX_ITEMS:
+            return self.json(
+                {"error": f"Too many colors (max {FAVORITE_COLORS_MAX_ITEMS})"},
+                status_code=400,
+            )
         # Basic validation: each item must have id, name, color, order
         validated = []
         for i, item in enumerate(colors):
@@ -476,16 +564,72 @@ class UltraCardFavoriteColorsView(HomeAssistantView):
                 continue
             if not all(k in item for k in ("id", "name", "color", "order")):
                 continue
+            order = item.get("order")
+            try:
+                # json.loads accepts NaN/Infinity; int() of those raises.
+                order_int = int(order) if isinstance(order, (int, float)) else i
+            except (ValueError, OverflowError):
+                order_int = i
             validated.append({
-                "id": str(item["id"]),
-                "name": str(item["name"]),
-                "color": str(item["color"]),
-                "order": int(item["order"]) if isinstance(item.get("order"), (int, float)) else i,
+                "id": str(item["id"])[:FAVORITE_COLORS_MAX_FIELD],
+                "name": str(item["name"])[:FAVORITE_COLORS_MAX_FIELD],
+                "color": str(item["color"])[:FAVORITE_COLORS_MAX_FIELD],
+                "order": order_int,
             })
         store = Store(hass, FAVORITE_COLORS_STORAGE_VERSION, FAVORITE_COLORS_STORAGE_KEY)
         existing = await store.async_load()
         await store.async_save(store_user_colors(existing, user_id, validated))
         return self.json({"success": True, "colors": validated})
+
+
+# Global theme default (instance-wide, shared by every Ultra Card on this HA)
+THEME_SETTINGS_STORAGE_KEY = "ultra_card_pro_cloud.theme_settings"
+THEME_SETTINGS_STORAGE_VERSION = 1
+THEME_ID_MAX_LENGTH = 128
+
+
+class UltraCardThemeSettingsView(HomeAssistantView):
+    """GET/POST /api/ultra_card_pro_cloud/theme_settings — global default theme.
+
+    Ultra Card 3.10+ syncs the global theme default here so every browser and
+    every user on this Home Assistant sees the same look. Reads are open to any
+    signed-in HA user; writes are limited to admins because the value affects
+    everyone's dashboards.
+    """
+
+    url = "/api/ultra_card_pro_cloud/theme_settings"
+    name = "api:ultra_card_pro_cloud:theme_settings"
+    requires_auth = True
+
+    async def get(self, request: web.Request) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+        store = Store(hass, THEME_SETTINGS_STORAGE_VERSION, THEME_SETTINGS_STORAGE_KEY)
+        data = await store.async_load()
+        theme = data.get("global_theme") if isinstance(data, dict) else ""
+        return self.json({"global_theme": theme if isinstance(theme, str) else ""})
+
+    async def post(self, request: web.Request) -> web.Response:
+        hass: HomeAssistant = request.app["hass"]
+        if not _request_can_manage_shared_auth(request):
+            return self.json(
+                {"error": "Only Home Assistant admins can change the global Ultra Card theme."},
+                status_code=403,
+            )
+        try:
+            body = await request.json()
+        except Exception:
+            return self.json({"error": "Invalid JSON"}, status_code=400)
+        if not isinstance(body, dict):
+            return self.json({"error": "Request body must be an object"}, status_code=400)
+        theme = body.get("global_theme", "")
+        if theme is None:
+            theme = ""
+        if not isinstance(theme, str) or len(theme) > THEME_ID_MAX_LENGTH:
+            return self.json({"error": "global_theme must be a short string"}, status_code=400)
+        theme = theme.strip()
+        store = Store(hass, THEME_SETTINGS_STORAGE_VERSION, THEME_SETTINGS_STORAGE_KEY)
+        await store.async_save({"global_theme": theme})
+        return self.json({"success": True, "global_theme": theme})
 
 
 class UltraCardProxyView(HomeAssistantView):
@@ -662,6 +806,11 @@ class UltraCardSmartGenerateView(HomeAssistantView):
         prompt = str(body.get("prompt") or "").strip()
         if not prompt:
             return self.json({"error": "prompt is required"}, status_code=400)
+        if len(prompt) > SMART_PROMPT_MAX_LENGTH:
+            return self.json(
+                {"error": f"prompt is too long (max {SMART_PROMPT_MAX_LENGTH} characters)"},
+                status_code=400,
+            )
 
         connector_preference = normalize_smart_connector_preference(
             body.get("connector_preference")
@@ -702,12 +851,15 @@ class UltraCardSmartGenerateView(HomeAssistantView):
             warnings.append("Smart Cards now use Home Assistant Assist; ignoring other connector preferences.")
 
         try:
+            # Run Assist as the requesting HA user so exposure rules and the
+            # audit trail reflect who asked, not "system".
             assist_result = await hass.services.async_call(
                 "conversation",
                 "process",
                 {"text": prompt},
                 blocking=True,
                 return_response=True,
+                context=Context(user_id=user_id),
             )
             assist_text = extract_conversation_text(assist_result)
         except Exception as err:
@@ -764,7 +916,6 @@ class UltraCardDiagnosticsView(HomeAssistantView):
             )
 
         from .diagnostics import async_get_config_entry_diagnostics
-        from .sensor import INTEGRATION_VERSION
         from .const import INTEGRATION_CAPABILITIES
 
         entries = hass.config_entries.async_entries(DOMAIN)
@@ -772,7 +923,8 @@ class UltraCardDiagnosticsView(HomeAssistantView):
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "integration_version": INTEGRATION_VERSION,
             "capabilities": dict(INTEGRATION_CAPABILITIES),
-            "panel": _read_panel_asset_meta(),
+            # File I/O off the event loop.
+            "panel": await hass.async_add_executor_job(_read_panel_asset_meta),
             "entries": [],
         }
 
@@ -804,24 +956,36 @@ class UltraCardDiagnosticsView(HomeAssistantView):
 
 
 def _read_panel_asset_meta() -> dict[str, Any]:
-    """Read optional panel-assets.json metadata for diagnostics."""
-    import json
-    from pathlib import Path
-
+    """Read optional panel-assets.json metadata (blocking; run in executor)."""
     manifest = Path(__file__).parent / "www" / "panel-assets.json"
     if not manifest.exists():
         return {"manifest_present": False}
     try:
         data = json.loads(manifest.read_text(encoding="utf-8"))
+        files = data.get("files") or {}
         return {
             "manifest_present": True,
             "synced_at": data.get("synced_at"),
             "ultra_card_version": data.get("ultra_card_version"),
             "ultra_card_commit": data.get("ultra_card_commit"),
-            "file_count": len(data.get("files") or {}),
+            "file_count": len(files),
+            "panel_sha256": files.get("ultra-card-panel.js"),
         }
     except Exception:
         return {"manifest_present": True, "error": "unreadable"}
+
+
+def _panel_cache_buster(panel_meta: dict[str, Any]) -> str:
+    """Short token appended to the panel module URL.
+
+    The entry script is served with long-lived cache headers, so without this
+    browsers keep the previous Hub for up to a month after an update.
+    Content-hashed chunks do not need it.
+    """
+    sha = panel_meta.get("panel_sha256")
+    if isinstance(sha, str) and len(sha) >= 12:
+        return sha[:12]
+    return INTEGRATION_VERSION
 
 
 class UltraCardMediaUploadView(HomeAssistantView):
@@ -924,22 +1088,17 @@ def aiohttp_timeout(seconds: int):
     import aiohttp
     return aiohttp.ClientTimeout(total=seconds)
 
-# Read version from root version.py file
-__version__ = "1.0.0"
-try:
-    version_file = os.path.join(os.path.dirname(__file__), "..", "..", "version.py")
-    if os.path.exists(version_file):
-        with open(version_file) as f:
-            for line in f:
-                if line.startswith("__version__"):
-                    __version__ = line.split("=")[1].strip().strip('"').strip("'")
-                    break
-except Exception:
-    pass  # Fall back to default version
+# Single source of truth is manifest.json (see const.INTEGRATION_VERSION).
+__version__ = INTEGRATION_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]  # Sensor platform for authentication status
+
+# This integration is configured exclusively through config entries; reject
+# (and warn about) any YAML under `ultra_card_pro_cloud:` instead of silently
+# ignoring it.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -953,6 +1112,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(UltraCardLogoutView())
     hass.http.register_view(UltraCardRegisterView())
     hass.http.register_view(UltraCardFavoriteColorsView())
+    hass.http.register_view(UltraCardThemeSettingsView())
     hass.http.register_view(UltraCardProxyView())
     hass.http.register_view(UltraCardSmartConnectorsStatusView())
     hass.http.register_view(UltraCardSmartGenerateView())
@@ -997,6 +1157,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.data.setdefault(DOMAIN, {})
     if not hass.data[DOMAIN].get("_panel_registered"):
         try:
+            panel_meta = await hass.async_add_executor_job(_read_panel_asset_meta)
+            module_url = f"{PANEL_JS_URL}?v={_panel_cache_buster(panel_meta)}"
             frontend.async_register_built_in_panel(
                 hass,
                 component_name="custom",
@@ -1007,8 +1169,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
                 config={
                     "_panel_custom": {
                         "name": PANEL_CUSTOM_ELEMENT,
-                        "js_url": PANEL_JS_URL,
-                        "module_url": PANEL_JS_URL,
+                        # module_url only: the bundle is an ES module (uses
+                        # import.meta), so a parallel classic-script load via
+                        # js_url always failed with a syntax error.
+                        "module_url": module_url,
                         "embed_iframe": False,
                         "trust_external": False,
                     }
@@ -1030,50 +1194,66 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Initialize domain in hass.data - this is critical for frontend access (panel already registered in async_setup)
     hass.data.setdefault(DOMAIN, {})
 
+    session = async_get_clientsession(hass)
+    coordinator = UltraCardProCloudCoordinator(hass, session, entry)
+
+    _LOGGER.debug("Attempting first data refresh...")
     try:
-        session = async_get_clientsession(hass)
-        coordinator = UltraCardProCloudCoordinator(hass, session, entry)
-
-        _LOGGER.info("Attempting first data refresh...")
         await coordinator.async_config_entry_first_refresh()
-
-        _LOGGER.info("Coordinator data after first refresh: %s", coordinator.data)
-
-        hass.data[DOMAIN][entry.entry_id] = {
-            DATA_COORDINATOR: coordinator,
-        }
-
-        if coordinator.data and coordinator.data.get("authenticated"):
-            hass.data[DOMAIN][DATA_AUTH] = {
-                "authenticated": True,
-                "user_id": coordinator.data.get("user_id"),
-                "username": coordinator.data.get("username"),
-                "email": coordinator.data.get("email"),
-                "display_name": coordinator.data.get("display_name"),
-                "subscription_tier": coordinator.data.get("subscription", {}).get("tier", "free"),
-                "subscription_status": coordinator.data.get("subscription", {}).get("status", "expired"),
-                "subscription_expires": coordinator.data.get("subscription", {}).get("expires"),
-            }
-            _LOGGER.info("✅ User authenticated, exposing PRO data")
-        else:
-            hass.data[DOMAIN][DATA_AUTH] = {
-                "authenticated": False,
-            }
-            _LOGGER.warning("⚠️ Authentication failed, exposing unauthenticated state")
-
-        _LOGGER.info("Final exposed auth data: %s", hass.data[DOMAIN][DATA_AUTH])
-        coordinator.async_add_listener(_create_update_listener(hass, entry))
-
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-        _LOGGER.info("✅ Ultra Card Pro Cloud integration initialized successfully")
-        return True
-
-    except Exception as err:
-        _LOGGER.exception("❌ Coordinator/sensor setup failed: %s", err)
+    except ConfigEntryNotReady as err:
+        # First refresh failed. Distinguish bad credentials (needs the user) from
+        # transient network trouble (HA should retry with back-off). Returning
+        # False here, as older builds did, left the entry permanently failed
+        # until the next restart and hid the reason from Settings → Integrations.
         hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
-        # Return False so HA marks the config entry as failed and surfaces the error;
-        # user can fix credentials/network and retry from the integration config.
-        return False
+        cause = err.__cause__ if isinstance(err.__cause__, UpdateFailed) else err
+        if coordinator.is_invalid_credentials_error(cause):
+            raise ConfigEntryAuthFailed(str(cause)) from err
+        raise
+
+    _LOGGER.debug("Coordinator data after first refresh: %s", coordinator.data)
+
+    hass.data[DOMAIN][entry.entry_id] = {
+        DATA_COORDINATOR: coordinator,
+    }
+
+    if coordinator.data and coordinator.data.get("authenticated"):
+        hass.data[DOMAIN][DATA_AUTH] = _auth_summary(coordinator.data)
+        _LOGGER.info("✅ Signed in to ultracard.io as %s", coordinator.data.get("username"))
+    else:
+        hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
+        if entry.data.get(CONF_USERNAME):
+            _LOGGER.warning("⚠️ Ultra Card Connect is set up but not authenticated")
+        else:
+            _LOGGER.info("Ultra Card Connect set up without an account; sign in from the Hub")
+
+    coordinator.async_add_listener(_create_update_listener(hass, entry))
+
+    try:
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    except Exception:
+        # Roll back so a half-initialised entry never lingers in hass.data.
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+        hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
+        raise
+
+    _LOGGER.info("✅ Ultra Card Pro Cloud v%s initialised", __version__)
+    return True
+
+
+def _auth_summary(data: dict[str, Any]) -> dict[str, Any]:
+    """Build the token-free auth summary exposed in hass.data[DOMAIN][DATA_AUTH]."""
+    subscription = data.get("subscription") or {}
+    return {
+        "authenticated": True,
+        "user_id": data.get("user_id"),
+        "username": data.get("username"),
+        "email": data.get("email"),
+        "display_name": data.get("display_name"),
+        "subscription_tier": subscription.get("tier", "free"),
+        "subscription_status": subscription.get("status", "expired"),
+        "subscription_expires": subscription.get("expires"),
+    }
 
 
 def _create_update_listener(hass: HomeAssistant, entry: ConfigEntry):
@@ -1087,22 +1267,13 @@ def _create_update_listener(hass: HomeAssistant, entry: ConfigEntry):
                 return
                 
             coordinator = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATOR]
-            
+
             if coordinator.data and coordinator.data.get("authenticated"):
-                hass.data[DOMAIN][DATA_AUTH] = {
-                    "authenticated": True,
-                    "user_id": coordinator.data.get("user_id"),
-                    "username": coordinator.data.get("username"),
-                    "email": coordinator.data.get("email"),
-                    "display_name": coordinator.data.get("display_name"),
-                    "subscription_tier": coordinator.data.get("subscription", {}).get("tier", "free"),
-                    "subscription_status": coordinator.data.get("subscription", {}).get("status", "expired"),
-                    "subscription_expires": coordinator.data.get("subscription", {}).get("expires"),
-                }
-                _LOGGER.info("🔄 Updated auth data (authenticated): %s", hass.data[DOMAIN][DATA_AUTH])
+                hass.data[DOMAIN][DATA_AUTH] = _auth_summary(coordinator.data)
+                _LOGGER.debug("🔄 Updated auth data (authenticated)")
             else:
                 hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
-                _LOGGER.info("🔄 Updated auth data (unauthenticated)")
+                _LOGGER.debug("🔄 Updated auth data (unauthenticated)")
                 
         except Exception as err:
             _LOGGER.error("❌ Error updating exposed auth data: %s", err)
@@ -1113,16 +1284,9 @@ def _create_update_listener(hass: HomeAssistant, entry: ConfigEntry):
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry. Panel stays registered (registered in async_setup) until integration is uninstalled."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+        hass.data.setdefault(DOMAIN, {}).pop(entry.entry_id, None)
         # Clear exposed auth data
-        if DATA_AUTH in hass.data[DOMAIN]:
-            hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
+        hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
 
     return unload_ok
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
 

@@ -1,8 +1,8 @@
 # Modules Overview
 
-Ultra Card ships **74 modules** organized into seven categories. Every module has the same 4-tab editor (General / Actions / Logic / Design), so once you've learned one you've learned them all.
+Ultra Card ships **69 modules** organized into seven categories. Every module has the same 4-tab editor (General / Actions / Logic / Design), so once you've learned one you've learned them all.
 
-> **Pro modules** are marked with **(Pro)**. They require an UltraCard.io account + the *Ultra Card Connect* integration. See [Pro and Cloud](#uc-doc-pro-and-cloud).
+> **Pro modules** are marked with **(Pro)**. They require an UltraCard.io account + the **Ultra Card Connect** integration. See [Pro and Cloud](#uc-doc-pro-and-cloud).
 
 ---
 
@@ -37,6 +37,8 @@ Ultra Card ships **74 modules** organized into seven categories. Every module ha
 | **[Module Solar Analytics](#uc-doc-module-solar-analytics)** | Solar power / grid / battery widget (Pro) |
 | **[Module Energy Display](#uc-doc-module-energy-display)** | Sankey-style energy flow (Pro) |
 | **[Module Grid](#uc-doc-module-grid)** | Customizable grid of entity tiles |
+| **[Module Battery Monitor](#uc-doc-module-battery-monitor)** | Auto-discover batteries; highlight low / critical devices |
+| **[Module Auto Entities List](#uc-doc-module-auto-entities-list)** | Dynamic entity list with domain / keyword filters |
 
 ## Interactive
 
@@ -64,6 +66,7 @@ Ultra Card ships **74 modules** organized into seven categories. Every module ha
 |---|---|
 | **[Module Horizontal](#uc-doc-module-horizontal)** | Side-by-side container with flex alignment |
 | **[Module Vertical](#uc-doc-module-vertical)** | Vertical stack container |
+| **[Module Stack](#uc-doc-module-stack)** | Layer modules with anchor-based overlay positioning |
 | **[Module Tabs](#uc-doc-module-tabs)** | Tabbed switchable sections |
 | **[Module Accordion](#uc-doc-module-accordion)** | Collapsible header reveals nested modules |
 | **[Module Popup](#uc-doc-module-popup)** | Modal popup container |
@@ -122,6 +125,7 @@ Ultra Card ships **74 modules** organized into seven categories. Every module ha
 | Show a room with auto-discovered entities | **Area Summary** |
 | Layout side-by-side | **Horizontal** |
 | Layout stacked | **Vertical** |
+| Layer modules on top of each other | **Stack Overlay** |
 | Tabs of different content | **Tabs** |
 | Modal popup | **Popup** |
 | Carousel | **Slider** + **Pagebreak** |

@@ -1,0 +1,122 @@
+export const __webpack_esm_ids__=[6971];export const __webpack_esm_modules__={9185(o,n,e){e.d(n,{UltraLockModule:()=>a});var r=e(2618),c=e(6478),i=e(7475),t=e(187);class a extends i.m{constructor(){super(...arguments),this._lockPending=new Map,this.handlesOwnDesignStyles=!0,this.metadata={type:"lock",title:"Lock Control",description:"Modern lock control with lock, unlock, and open when supported",author:"WJD Designs",version:"1.0.0",icon:"mdi:lock",category:"interactive",tags:["lock","security","door","interactive"]}}createDefault(o,n){return{id:o||this.generateId("lock"),type:"lock",entity:"",name:"",icon:"",layout:"standard",alignment:"center",show_title:!0,show_icon:!0,show_state:!0,show_open_button:!0,require_confirmation:!0,tap_action:{action:"nothing"},hold_action:{action:"nothing"},double_tap_action:{action:"nothing"},display_mode:"always",display_conditions:[]}}validate(o){var n;const e=[],r=o;return o.id||e.push("Module ID is required"),o.type&&"lock"===o.type||e.push("Module type must be lock"),(null===(n=r.entity)||void 0===n?void 0:n.trim())||e.push("Select a lock entity"),{valid:0===e.length,errors:e}}getLayoutOptions(o){return[{value:"hero",label:(0,c.kg)("editor.lock.layout_hero",o,"Hero")},{value:"standard",label:(0,c.kg)("editor.lock.layout_standard",o,"Standard")},{value:"compact",label:(0,c.kg)("editor.lock.layout_compact",o,"Compact")}]}renderGeneralTab(o,n,e,i){var t;const a=o,l=(null===(t=null==n?void 0:n.locale)||void 0===t?void 0:t.language)||"en";return r.qy`
+      ${this.injectUcFormStyles()}
+      <div class="general-tab">
+        ${this.renderSettingsSection((0,c.kg)("editor.lock.entity_section",l,"Entity"),(0,c.kg)("editor.lock.entity_section_desc",l,"Select the lock to control."),[])}
+        <div style="margin-bottom: 24px;">
+          ${this.renderEntityPickerWithVariables(n,e,"entity",a.entity||"",o=>{i({entity:o}),setTimeout(()=>this.triggerPreviewUpdate(),50)},["lock"],(0,c.kg)("editor.lock.entity",l,"Lock entity"))}
+        </div>
+        ${this.renderSettingsSection("","",[{title:(0,c.kg)("editor.lock.icon_override",l,"Icon override"),description:(0,c.kg)("editor.lock.icon_override_desc",l,"Optional mdi: icon; leave empty for default lock icons"),hass:n,data:{icon:a.icon||""},schema:[this.textField("icon")],onChange:o=>{var n,e;i({icon:null!==(e=null===(n=o.detail.value)||void 0===n?void 0:n.icon)&&void 0!==e?e:""}),setTimeout(()=>this.triggerPreviewUpdate(),50)}}])}
+
+        ${this.renderSettingsSection((0,c.kg)("editor.lock.display_section",l,"Display"),(0,c.kg)("editor.lock.display_desc",l,"Choose what to show on the card."),[{title:(0,c.kg)("editor.lock.show_title",l,"Show title"),description:(0,c.kg)("editor.lock.show_title_desc",l,"Display the lock name"),hass:n,data:{show_title:!1!==a.show_title},schema:[this.booleanField("show_title")],onChange:o=>{var n,e;i({show_title:null===(e=null===(n=o.detail.value)||void 0===n?void 0:n.show_title)||void 0===e||e}),setTimeout(()=>this.triggerPreviewUpdate(),50)}},{title:(0,c.kg)("editor.lock.show_icon",l,"Show icon"),description:(0,c.kg)("editor.lock.show_icon_desc",l,"Show lock icon (standard / compact / hero)"),hass:n,data:{show_icon:!1!==a.show_icon},schema:[this.booleanField("show_icon")],onChange:o=>{var n,e;i({show_icon:null===(e=null===(n=o.detail.value)||void 0===n?void 0:n.show_icon)||void 0===e||e}),setTimeout(()=>this.triggerPreviewUpdate(),50)}},{title:(0,c.kg)("editor.lock.show_state",l,"Show state"),description:(0,c.kg)("editor.lock.show_state_desc",l,"Display locked / unlocked text"),hass:n,data:{show_state:!1!==a.show_state},schema:[this.booleanField("show_state")],onChange:o=>{var n,e;i({show_state:null===(e=null===(n=o.detail.value)||void 0===n?void 0:n.show_state)||void 0===e||e}),setTimeout(()=>this.triggerPreviewUpdate(),50)}},{title:(0,c.kg)("editor.lock.show_open_button",l,"Show open button"),description:(0,c.kg)("editor.lock.show_open_button_desc",l,"Show Open when the lock supports unlatch (OPEN feature)"),hass:n,data:{show_open_button:!1!==a.show_open_button},schema:[this.booleanField("show_open_button")],onChange:o=>{var n,e;i({show_open_button:null===(e=null===(n=o.detail.value)||void 0===n?void 0:n.show_open_button)||void 0===e||e}),setTimeout(()=>this.triggerPreviewUpdate(),50)}}])}
+
+        ${this.renderSettingsSection((0,c.kg)("editor.lock.behavior_section",l,"Behavior"),(0,c.kg)("editor.lock.behavior_desc",l,"Safety options for lock actions."),[{title:(0,c.kg)("editor.lock.require_confirmation",l,"Confirm unlock / open"),description:(0,c.kg)("editor.lock.require_confirmation_desc",l,"Ask for confirmation before unlocking or opening"),hass:n,data:{require_confirmation:!1!==a.require_confirmation},schema:[this.booleanField("require_confirmation")],onChange:o=>{var n,e;i({require_confirmation:null===(e=null===(n=o.detail.value)||void 0===n?void 0:n.require_confirmation)||void 0===e||e}),setTimeout(()=>this.triggerPreviewUpdate(),50)}}])}
+
+        ${this.renderSettingsSection((0,c.kg)("editor.lock.layout_section",l,"Layout"),(0,c.kg)("editor.lock.layout_desc",l,"Visual style of the lock control."),[{title:(0,c.kg)("editor.lock.layout",l,"Layout"),description:(0,c.kg)("editor.lock.layout_style_desc",l,"Hero, standard, or compact"),hass:n,data:{layout:a.layout||"standard"},schema:[this.selectField("layout",this.getLayoutOptions(l))],onChange:o=>{var n;i({layout:(null===(n=o.detail.value)||void 0===n?void 0:n.layout)||"standard"}),setTimeout(()=>this.triggerPreviewUpdate(),50)}},{title:(0,c.kg)("editor.lock.alignment",l,"Alignment"),description:(0,c.kg)("editor.lock.alignment_desc",l,"Content alignment in the hero layout"),hass:n,data:{alignment:a.alignment||"center"},schema:[this.selectField("alignment",[{value:"left",label:(0,c.kg)("editor.lock.align_left",l,"Left")},{value:"center",label:(0,c.kg)("editor.lock.align_center",l,"Center")},{value:"right",label:(0,c.kg)("editor.lock.align_right",l,"Right")}])],onChange:o=>{var n;i({alignment:(null===(n=o.detail.value)||void 0===n?void 0:n.alignment)||"center"}),setTimeout(()=>this.triggerPreviewUpdate(),50)}}])}
+      </div>
+    `}injectLockStyles(){return r.qy`<style>
+      ${this.getStyles()}
+    </style>`}syncLockPending(o,n){const e=this._lockPending.get(o);e&&(("lock"!==e||"locked"!==n&&"locking"!==n)&&("unlock"!==e||"unlocked"!==n&&"unlocking"!==n)&&("open"!==e||"unlocked"!==n&&"unlocking"!==n)||this._lockPending.delete(o))}renderPreview(o,n,e,i){var a,l,s,d,u;const k=o,p=this.resolveEntity(k.entity,e)||k.entity,g=(null===(a=null==n?void 0:n.locale)||void 0===a?void 0:a.language)||"en";if(!p||!(null===(l=null==n?void 0:n.states)||void 0===l?void 0:l[p]))return r.qy`
+        ${this.injectLockStyles()}
+        <div
+          class="uc-lock-wrapper"
+          data-uc-role="pane"
+          style="background: var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))); border-radius: var(--uc-r-16, 16px); overflow: hidden;"
+        >
+          ${this.renderGradientErrorState((0,c.kg)("editor.lock.config_needed",g,"Select a lock"),(0,c.kg)("editor.lock.config_needed_desc",g,"Choose a lock entity in the General tab"),"mdi:lock")}
+        </div>
+      `;const h=n.states[p],v=h.attributes||{},b=String(h.state).toLowerCase();this.syncLockPending(p,b);const m=function(o){const n=o.supported_features;return"number"==typeof n?n:0}(v),y=function(o){return!!(1&o)}(m),x=!1!==k.show_open_button&&y,_="unavailable"===b||"unknown"===b,w="locking"===b||"unlocking"===b,f="jammed"===b,$="locked"===b,S="unlocked"===b,q=k.layout||"standard",C=!1!==k.show_title,j=!1!==k.show_icon,L=!1!==k.show_state,P=null===(s=k.icon)||void 0===s?void 0:s.trim(),U=(null===(d=k.name)||void 0===d?void 0:d.trim())||("string"==typeof v.friendly_name?v.friendly_name:"")||(null===(u=p.split(".").pop())||void 0===u?void 0:u.replace(/_/g," "))||"Lock",z=_?(0,c.kg)("editor.lock.unavailable",g,"Unavailable"):f?(0,c.kg)("editor.lock.jammed",g,"Jammed"):"locking"===b?(0,c.kg)("editor.lock.locking",g,"Locking…"):"unlocking"===b?(0,c.kg)("editor.lock.unlocking",g,"Unlocking…"):$?(0,c.kg)("editor.lock.locked",g,"Locked"):S?(0,c.kg)("editor.lock.unlocked",g,"Unlocked"):b.replace(/_/g," "),T=P||($?"mdi:lock":"mdi:lock-open-variant"),D=o=>{n.callService("lock",o,{entity_id:p})},O=o=>{this._lockPending.set(p,o),this.triggerPreviewUpdate(!0)},F=async o=>!1===k.require_confirmation||(t.n.setHass(n),t.n.showConfirmation({action:"perform-action",perform_action:`lock.${o}`,entity:p},{confirmText:"open"===o?(0,c.kg)("editor.lock.action_open",g,"Open"):(0,c.kg)("editor.lock.action_unlock",g,"Unlock"),cancelText:(0,c.kg)("editor.lock.cancel",g,"Cancel")})),A=()=>{O("lock"),D("lock")},E=async()=>{await F("unlock")&&(O("unlock"),D("unlock"))},H=async()=>{await F("open")&&(O("open"),D("open"))},M=_||w,R=$||"locking"===b,G=o=>r.qy`
+      <ha-icon
+        class="uc-lock-ha-icon ${R?"uc-lock-ha-icon--locked":""}"
+        style="--mdc-icon-size: ${o}px; color: var(--primary-color);"
+        icon="${T}"
+      ></ha-icon>
+    `,I=()=>r.qy`
+      <button
+        type="button"
+        class="uc-lock-btn ${$?"uc-lock-btn--active":""}"
+        @click=${A}
+        ?disabled=${M}
+      >
+        <ha-icon style="--mdc-icon-size: 18px;" icon="mdi:lock"></ha-icon>
+        ${(0,c.kg)("editor.lock.action_lock",g,"Lock")}
+      </button>
+      <button
+        type="button"
+        class="uc-lock-btn ${S?"uc-lock-btn--active":""}"
+        @click=${E}
+        ?disabled=${M}
+      >
+        <ha-icon style="--mdc-icon-size: 18px;" icon="mdi:lock-open-variant"></ha-icon>
+        ${(0,c.kg)("editor.lock.action_unlock",g,"Unlock")}
+      </button>
+      ${x?r.qy`<button
+            type="button"
+            class="uc-lock-btn uc-lock-btn--ghost"
+            @click=${H}
+            ?disabled=${M}
+          >
+            <ha-icon style="--mdc-icon-size: 18px;" icon="mdi:door-open"></ha-icon>
+            ${(0,c.kg)("editor.lock.action_open",g,"Open")}
+          </button>`:r.s6}
+    `;let W;const J=k.alignment||"center",N="center"===J?"":`uc-lock--align-${J}`;W="hero"===q?r.qy`
+        <div class="uc-lock uc-lock--hero ${N}">
+          <div class="uc-lock__visual">
+            <div class="uc-lock__glow ${R?"uc-lock__glow--on":""}"></div>
+            <div class="uc-lock-circle ${R?"uc-lock-circle--locked":""} ${f?"uc-lock-circle--jammed":""}">
+              ${j?G(56):r.s6}
+            </div>
+          </div>
+          <div class="uc-lock__identity">
+            ${C?r.qy`<h2 class="uc-lock-title">${U}</h2>`:r.s6}
+            ${L?r.qy`<span class="uc-lock-badge ${R?"uc-lock-badge--locked":""} ${f?"uc-lock-badge--jammed":""} ${_?"uc-lock-badge--unavail":""}">
+                  ${R&&!_?r.qy`<span class="uc-lock-status-dot"></span>`:r.s6}
+                  ${z}
+                </span>`:r.s6}
+          </div>
+          ${f?r.qy`<p class="uc-lock-warn">${(0,c.kg)("editor.lock.jammed_hint",g,"Check the lock hardware.")}</p>`:r.s6}
+          <div class="uc-lock__actions" role="group">${I()}</div>
+        </div>
+      `:"compact"===q?r.qy`
+        <div class="uc-lock uc-lock--compact">
+          <div class="uc-lock-compact__row">
+            ${j?r.qy`<div class="uc-lock-icon-well ${R?"uc-lock-icon-well--locked":""} ${f?"uc-lock-icon-well--jammed":""}">
+                  ${G(18)}
+                </div>`:r.s6}
+            <span class="uc-lock-chip-label">
+              ${C?r.qy`<span class="uc-lock-chip-name">${U}</span>`:L?r.qy`<span class="uc-lock-chip-name">${z}</span>`:r.s6}
+              ${C&&L?r.qy`<span class="uc-lock-chip-state">${z}</span>`:r.s6}
+            </span>
+            <button
+              type="button"
+              class="uc-lock-chip-btn ${R?"":"uc-lock-chip-btn--active"}"
+              @click=${$?E:A}
+              ?disabled=${M}
+            >
+              ${$?(0,c.kg)("editor.lock.action_unlock",g,"Unlock"):(0,c.kg)("editor.lock.action_lock",g,"Lock")}
+            </button>
+          </div>
+        </div>
+      `:r.qy`
+        <div class="uc-lock uc-lock--standard">
+          <div class="uc-lock-std__row">
+            ${j?r.qy`<div class="uc-lock-icon-well uc-lock-icon-well--std ${R?"uc-lock-icon-well--locked":""} ${f?"uc-lock-icon-well--jammed":""}">
+                  ${G(28)}
+                </div>`:r.s6}
+            <div class="uc-lock-std__meta">
+              ${C?r.qy`<h2 class="uc-lock-title uc-lock-title--std">${U}</h2>`:r.s6}
+              ${L?r.qy`<p class="uc-lock-subtitle">${z}</p>`:r.s6}
+            </div>
+            <div class="uc-lock-std__actions" role="group">${I()}</div>
+          </div>
+          ${f?r.qy`<p class="uc-lock-warn">${(0,c.kg)("editor.lock.jammed_hint",g,"Check the lock hardware.")}</p>`:r.s6}
+        </div>
+      `;const V=this.buildDesignStyles(o,n),B=Object.entries(V).filter(([,o])=>null!=o&&""!==o).map(([o,n])=>`${o.replace(/([A-Z])/g,"-$1").toLowerCase()}: ${n}`).join("; "),Z=this.getHoverEffectClass(o);return r.qy`
+      ${this.injectLockStyles()}
+      <div
+        class="uc-lock-wrapper ${Z} ${f?"uc-lock-wrapper--jammed":""}"
+        data-uc-role="pane"
+        style="background: var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))); border: var(--uc-pane-border, none); box-shadow: var(--uc-pane-shadow, none); border-radius: var(--uc-r-18, 18px); overflow: hidden; ${B}"
+      >
+        ${this.wrapWithAnimation(W,o,n)}
+      </div>
+    `}getStyles(){return"\n      .uc-lock-wrapper { box-sizing: border-box; }\n      .uc-lock { box-sizing: border-box; color: var(--primary-text-color); }\n\n      /* ═══ HERO ═══════════════════════════════════ */\n      .uc-lock--hero {\n        padding: 28px 20px 24px;\n        display: flex;\n        flex-direction: column;\n        align-items: center;\n        gap: 16px;\n      }\n      .uc-lock__visual {\n        position: relative;\n        width: 140px;\n        height: 140px;\n        flex-shrink: 0;\n      }\n      .uc-lock__glow {\n        position: absolute;\n        inset: -14px;\n        border-radius: 50%;\n        background: radial-gradient(circle, color-mix(in srgb, var(--primary-color) 12%, transparent) 0%, transparent 70%);\n        opacity: 0;\n        transition: opacity 0.4s ease;\n        pointer-events: none;\n      }\n      .uc-lock__glow--on { opacity: 1; }\n      .uc-lock-circle {\n        width: 100%;\n        height: 100%;\n        border-radius: 50%;\n        background: radial-gradient(\n          circle at 38% 32%,\n          color-mix(in srgb, var(--primary-color) 12%, var(--card-background-color, var(--ha-card-background))) 0%,\n          color-mix(in srgb, var(--card-background-color, var(--ha-card-background)) 92%, var(--primary-color)) 100%\n        );\n        border: 1.5px solid color-mix(in srgb, var(--divider-color) 40%, transparent);\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        box-shadow: inset 0 2px 16px rgba(0,0,0,0.12);\n        transition: border-color 0.3s ease, box-shadow 0.3s ease;\n        position: relative;\n        z-index: 1;\n      }\n      .uc-lock-circle--locked {\n        border-color: color-mix(in srgb, var(--primary-color) 35%, transparent);\n        box-shadow: inset 0 2px 16px rgba(0,0,0,0.14), 0 0 40px color-mix(in srgb, var(--primary-color) 12%, transparent);\n      }\n      .uc-lock-circle--jammed {\n        border-color: color-mix(in srgb, var(--error-color, #db4437) 45%, transparent);\n      }\n      .uc-lock__identity {\n        display: flex;\n        flex-direction: column;\n        align-items: center;\n        gap: 8px;\n        text-align: center;\n      }\n      .uc-lock--hero .uc-lock__actions {\n        display: flex;\n        gap: 8px;\n        width: 100%;\n        max-width: 340px;\n      }\n      .uc-lock--hero.uc-lock--align-left { align-items: flex-start; }\n      .uc-lock--hero.uc-lock--align-left .uc-lock__identity { align-items: flex-start; text-align: left; }\n      .uc-lock--hero.uc-lock--align-right { align-items: flex-end; }\n      .uc-lock--hero.uc-lock--align-right .uc-lock__identity { align-items: flex-end; text-align: right; }\n\n      /* ═══ STANDARD (single row) ══════════════════ */\n      .uc-lock--standard { padding: 14px 16px; }\n      .uc-lock-std__row {\n        display: flex;\n        align-items: center;\n        gap: 12px;\n      }\n      .uc-lock-std__meta { flex: 1; min-width: 0; overflow: hidden; }\n      .uc-lock-std__actions {\n        flex-shrink: 0;\n        display: flex;\n        align-items: center;\n        gap: 7px;\n      }\n      .uc-lock-std__actions .uc-lock-btn {\n        padding: 7px 14px;\n        font-size: 0.8125rem;\n        border-radius: 999px;\n      }\n      .uc-lock-icon-well--std { width: 40px; height: 40px; }\n      .uc-lock-title--std { font-size: 0.9375rem; font-weight: 700; }\n      .uc-lock-subtitle {\n        margin: 3px 0 0;\n        font-size: 0.8125rem;\n        line-height: 1.35;\n        color: var(--secondary-text-color);\n        white-space: nowrap;\n        overflow: hidden;\n        text-overflow: ellipsis;\n      }\n\n      /* ═══ COMPACT (chip) ═════════════════════════ */\n      .uc-lock--compact { padding: 6px 10px; }\n      .uc-lock-compact__row {\n        display: flex;\n        align-items: center;\n        gap: 8px;\n      }\n      .uc-lock-chip-label {\n        flex: 1;\n        min-width: 0;\n        display: flex;\n        flex-direction: column;\n        font-size: 0.8125rem;\n        font-weight: 600;\n        color: var(--primary-text-color);\n        white-space: nowrap;\n        overflow: hidden;\n      }\n      .uc-lock-chip-name {\n        overflow: hidden;\n        text-overflow: ellipsis;\n      }\n      .uc-lock-chip-state {\n        font-size: 0.6875rem;\n        font-weight: 500;\n        color: var(--secondary-text-color);\n        overflow: hidden;\n        text-overflow: ellipsis;\n      }\n      .uc-lock-chip-btn {\n        flex-shrink: 0;\n        font: inherit;\n        font-size: 0.75rem;\n        font-weight: 700;\n        padding: 5px 12px;\n        border-radius: 999px;\n        cursor: pointer;\n        border: 1.5px solid color-mix(in srgb, var(--divider-color) 75%, transparent);\n        background: color-mix(in srgb, var(--divider-color) 8%, var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))));\n        color: var(--primary-text-color);\n        white-space: nowrap;\n        transition: background 0.15s, border-color 0.15s, color 0.15s;\n      }\n      .uc-lock-chip-btn:disabled { opacity: 0.45; cursor: not-allowed; }\n      .uc-lock-chip-btn:focus-visible {\n        outline: 2px solid var(--primary-color);\n        outline-offset: 2px;\n      }\n      .uc-lock-chip-btn--active {\n        border-color: color-mix(in srgb, var(--primary-color) 50%, transparent);\n        background: color-mix(in srgb, var(--primary-color) 14%, var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))));\n        color: var(--primary-color);\n      }\n\n      /* ═══ SHARED ═════════════════════════════════ */\n      .uc-lock-icon-well {\n        flex-shrink: 0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        border-radius: 50%;\n        background: color-mix(in srgb, var(--primary-color) 8%, var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))));\n        border: 1px solid color-mix(in srgb, var(--divider-color) 55%, transparent);\n        transition: box-shadow 0.2s ease, border-color 0.2s ease;\n      }\n      .uc-lock--compact .uc-lock-icon-well {\n        width: 28px; height: 28px;\n        background: transparent;\n        border: none;\n      }\n      .uc-lock-icon-well--locked {\n        border-color: color-mix(in srgb, var(--primary-color) 38%, transparent);\n        box-shadow: 0 2px 14px color-mix(in srgb, var(--primary-color) 12%, transparent);\n      }\n      .uc-lock-icon-well--jammed {\n        border-color: color-mix(in srgb, var(--error-color, #db4437) 40%, transparent);\n      }\n      .uc-lock-ha-icon { line-height: 1; transition: transform 0.28s ease; }\n      .uc-lock-ha-icon--locked { transform: scale(1.05); }\n      @media (prefers-reduced-motion: reduce) {\n        .uc-lock-ha-icon { transition: none; }\n        .uc-lock-ha-icon--locked { transform: none; }\n      }\n\n      .uc-lock-title {\n        margin: 0;\n        font-size: 1.25rem;\n        font-weight: 800;\n        letter-spacing: -0.02em;\n        line-height: 1.25;\n        color: var(--primary-text-color);\n        white-space: nowrap;\n        overflow: hidden;\n        text-overflow: ellipsis;\n      }\n      .uc-lock-badge {\n        display: inline-flex;\n        align-items: center;\n        gap: 6px;\n        padding: 4px 14px;\n        border-radius: 999px;\n        font-size: 0.75rem;\n        font-weight: 700;\n        letter-spacing: 0.03em;\n        text-transform: uppercase;\n        background: color-mix(in srgb, var(--divider-color) 15%, var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))));\n        color: var(--secondary-text-color);\n        border: 1px solid color-mix(in srgb, var(--divider-color) 35%, transparent);\n      }\n      .uc-lock-badge--locked {\n        background: color-mix(in srgb, var(--primary-color) 12%, var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))));\n        color: var(--primary-color);\n        border-color: color-mix(in srgb, var(--primary-color) 25%, transparent);\n      }\n      .uc-lock-badge--jammed {\n        background: color-mix(in srgb, var(--error-color, #db4437) 12%, var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))));\n        color: var(--error-color, #db4437);\n        border-color: color-mix(in srgb, var(--error-color, #db4437) 25%, transparent);\n      }\n      .uc-lock-badge--unavail { opacity: 0.6; }\n      .uc-lock-status-dot {\n        width: 7px; height: 7px;\n        border-radius: 50%;\n        background: var(--primary-color);\n        box-shadow: 0 0 6px color-mix(in srgb, var(--primary-color) 60%, transparent);\n        flex-shrink: 0;\n      }\n      .uc-lock-warn {\n        margin: 0;\n        font-size: 0.8125rem;\n        color: var(--error-color, #db4437);\n        font-weight: 600;\n      }\n      .uc-lock-wrapper--jammed .uc-lock-badge {\n        color: color-mix(in srgb, var(--error-color, #db4437) 70%, var(--secondary-text-color));\n      }\n\n      .uc-lock-btn {\n        flex: 1;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        gap: 6px;\n        font: inherit;\n        font-size: 0.8125rem;\n        font-weight: 700;\n        padding: 10px 14px;\n        border-radius: var(--uc-r-14, 14px);\n        cursor: pointer;\n        border: 1.5px solid color-mix(in srgb, var(--divider-color) 60%, transparent);\n        background: color-mix(in srgb, var(--divider-color) 6%, var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))));\n        color: var(--primary-text-color);\n        white-space: nowrap;\n        transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.1s;\n      }\n      .uc-lock-btn:active:not(:disabled) { transform: scale(0.97); }\n      .uc-lock-btn:disabled { opacity: 0.4; cursor: not-allowed; }\n      .uc-lock-btn--active {\n        border-color: color-mix(in srgb, var(--primary-color) 50%, transparent);\n        background: color-mix(in srgb, var(--primary-color) 14%, var(--uc-pane-bg, var(--card-background-color, var(--ha-card-background))));\n        color: var(--primary-color);\n      }\n      .uc-lock-btn:hover:not(:disabled) {\n        border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);\n        box-shadow: 0 4px 16px color-mix(in srgb, var(--primary-color) 10%, transparent);\n      }\n      .uc-lock-btn:focus-visible {\n        border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);\n        box-shadow: 0 4px 16px color-mix(in srgb, var(--primary-color) 10%, transparent);\n        outline: 2px solid var(--primary-color);\n        outline-offset: 2px;\n      }\n      .uc-lock-btn--ghost {\n        font-weight: 600;\n        color: var(--secondary-text-color);\n        background: transparent;\n        border-color: color-mix(in srgb, var(--divider-color) 40%, transparent);\n      }\n    "}}}};

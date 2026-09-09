@@ -52,7 +52,13 @@ Switch the **value** field to template mode to fully control display:
 - **Overall alignment** — left / center / right
 - **Icon alignment** — controls icon-only block alignment
 - **Content alignment** — controls text-block alignment
-- **Name size** / **Value size** — independent font sizing
+- **Name size** / **Value size** — per-entity font sizing (each info row can have its own sizes)
+
+> **Note:** Bulk "apply size to all entities" was removed — sizing is configured per entity for finer control.
+
+### Actions sync
+
+When you change the **first (primary) entity**, tap / hold / double-tap action targets automatically follow that entity (more-info, toggle, etc.) so you don't have to re-wire actions after swapping the data source.
 
 ## Examples
 

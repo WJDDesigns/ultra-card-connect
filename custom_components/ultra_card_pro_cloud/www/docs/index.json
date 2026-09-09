@@ -1,6 +1,6 @@
 {
-  "synced_at": "2026-05-24T19:40:52.352Z",
-  "wiki_last_commit_at": "2026-05-03T12:31:17-04:00",
+  "synced_at": "2026-09-09T20:40:54.452Z",
+  "wiki_last_commit_at": "2026-05-24T16:52:14-04:00",
   "source": "https://github.com/WJDDesigns/Ultra-Card/wiki",
   "pages": [
     {
@@ -64,6 +64,11 @@
       "file": "pages/module-area-summary.md"
     },
     {
+      "slug": "module-auto-entities-list",
+      "title": "Auto Entities List",
+      "file": "pages/module-auto-entities-list.md"
+    },
+    {
       "slug": "module-background",
       "title": "Background",
       "file": "pages/module-background.md"
@@ -77,6 +82,11 @@
       "slug": "module-bar",
       "title": "Bar",
       "file": "pages/module-bar.md"
+    },
+    {
+      "slug": "module-battery-monitor",
+      "title": "Battery Monitor",
+      "file": "pages/module-battery-monitor.md"
     },
     {
       "slug": "module-button",
@@ -324,6 +334,11 @@
       "file": "pages/module-sports-score.md"
     },
     {
+      "slug": "module-stack",
+      "title": "Stack Overlay",
+      "file": "pages/module-stack.md"
+    },
+    {
       "slug": "module-status-summary",
       "title": "Status Summary",
       "file": "pages/module-status-summary.md"
@@ -364,6 +379,11 @@
       "file": "pages/translations.md"
     },
     {
+      "slug": "ultra-card-hub",
+      "title": "Ultra Card Hub",
+      "file": "pages/ultra-card-hub.md"
+    },
+    {
       "slug": "module-vacuum",
       "title": "Vacuum Control",
       "file": "pages/module-vacuum.md"
@@ -390,6 +410,7 @@
       "slugs": [
         "installation",
         "quick-start",
+        "ultra-card-hub",
         "the-editor",
         "faq-and-troubleshooting"
       ],
@@ -435,6 +456,8 @@
         "module-solar-analytics",
         "module-energy-display",
         "module-grid",
+        "module-battery-monitor",
+        "module-auto-entities-list",
         "module-button",
         "module-toggle",
         "module-spinbox",
@@ -452,6 +475,7 @@
         "module-virtual-pet",
         "module-horizontal",
         "module-vertical",
+        "module-stack",
         "module-tabs",
         "module-accordion",
         "module-popup",

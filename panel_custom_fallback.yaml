@@ -17,12 +17,12 @@ panel_custom:
     sidebar_title: Ultra Card
     sidebar_icon: mdi:cards
     url_path: ultra-card-hub
-    js_url: /local/community/Ultra-Card/ultra-card-panel.js
+    # module_url only: the bundle is an ES module, so js_url (classic script)
+    # would fail to parse.
     module_url: /local/community/Ultra-Card/ultra-card-panel.js
   # Option B (comment out Option A and use this if you use HACS path instead):
   # - name: ultra-card-panel
   #   sidebar_title: Ultra Card
   #   sidebar_icon: mdi:cards
   #   url_path: ultra-card-hub
-  #   js_url: /hacsfiles/Ultra-Card/ultra-card-panel.js
   #   module_url: /hacsfiles/Ultra-Card/ultra-card-panel.js

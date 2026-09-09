@@ -7,8 +7,12 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DATA_COORDINATOR, DOMAIN, INTEGRATION_CAPABILITIES
-from .sensor import INTEGRATION_VERSION
+from .const import (
+    DATA_COORDINATOR,
+    DOMAIN,
+    INTEGRATION_CAPABILITIES,
+    INTEGRATION_VERSION,
+)
 
 TO_REDACT = {
     "password",

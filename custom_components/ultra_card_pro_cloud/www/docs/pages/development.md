@@ -111,12 +111,12 @@ Run `npm run release:check` before pushing your PR. CI runs the same pipeline.
 
 ---
 
-## Sidebar panel and the Ultra Card Connect integration
+## Sidebar panel and the Pro Cloud integration
 
-The **Ultra Card Hub** sidebar panel is **served by the Ultra Card Connect integration**, not by HACS:
+The **Ultra Card Hub** sidebar panel is **served by the Ultra Card Pro Cloud integration**, not by HACS:
 
 - Panel changes (anything in `src/panels/`) build into `dist/ultra-card-panel.js` on `npm run build`.
-- To ship them with the integration, run `npm run sync:panel` — copies the built panel into the integration repo (default: `../Ultra Card Connect`, override with `INTEGRATION_WWW_PATH`).
+- To ship them with the integration, run `npm run sync:panel` — copies the built panel into the integration repo (default: `../Ultra Card Pro Cloud`, override with `INTEGRATION_WWW_PATH`).
 - A new integration release is needed for users to receive the updated panel. Updating only the card does **not** update the panel.
 
 ---

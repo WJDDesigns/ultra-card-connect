@@ -13,7 +13,7 @@
 
 - Node.js 20+
 - Python 3.11+
-- Home Assistant 2024.1.0 or newer for testing
+- Home Assistant 2024.11.0 or newer for testing
 - Ultra Card frontend repo (sibling folder) when bundling a new panel build
 
 ## Setup

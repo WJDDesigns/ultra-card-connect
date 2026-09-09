@@ -13,6 +13,7 @@
 | Install Ultra Card in Home Assistant | [Installation](#uc-doc-installation) |
 | Build your first card | [Quick Start](#uc-doc-quick-start) |
 | Understand the editor | [The Editor](#uc-doc-the-editor) |
+| Use the Hub sidebar + in-panel docs | [Ultra Card Hub](#uc-doc-ultra-card-hub) |
 | Browse every module | [Modules Overview](#uc-doc-modules-overview) |
 | Show / hide modules conditionally | [Logic and Conditions](#uc-doc-logic-and-conditions) |
 | Use Jinja2 in module fields | [Templates and Jinja](#uc-doc-templates-and-jinja) |
@@ -27,7 +28,7 @@
 
 ## What Ultra Card gives you
 
-- **74+ modules** across 7 categories (content, data, interactive, layout, media, input, Pro)
+- **69 modules** across 7 categories (content, data, interactive, layout, media, input, Pro)
 - **Drag-and-drop layout** — rows, columns, and unlimited nesting
 - **4-tab module editor** — General, Actions, Logic, Design
 - **Native + 3rd-party card embedding** — Bubble Card, Mushroom, ApexCharts, etc.
@@ -37,7 +38,7 @@
 - **15 languages** — full internationalization
 - **Pro tier** — cloud sync, daily backups, animated modules, video backgrounds
 
-> **Note:** This wiki documents Ultra Card **v3.4.0-beta1**. Some features and modules may differ slightly in older releases.
+> **Note:** This wiki documents Ultra Card **v3.5.0-beta1**. Some features and modules may differ slightly in older releases. You can also read these pages inside Home Assistant via **Ultra Card Hub → Docs** ([Ultra Card Hub](#uc-doc-ultra-card-hub)).
 
 ---
 

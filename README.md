@@ -107,7 +107,7 @@ Open your Home Assistant and add this repository in HACS:
 
 ## 📋 Requirements
 
-- Home Assistant **2024.1.0** or newer
+- Home Assistant **2024.11.0** or newer
 - A [ultracard.io](https://ultracard.io) account — free accounts are supported
 - **Ultra Card** installed via HACS (the card, not just this integration)
 

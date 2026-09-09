@@ -88,15 +88,30 @@ You need both:
 1. An **UltraCard.io account** (sign up at [UltraCard.io](https://ultracard.io)).
 2. The **Ultra Card Connect** custom HA integration (HACS → Integrations).
 
-After installing the integration, sign in via **Settings → Devices & services → Add integration → Ultra Card Connect**. See [Pro and Cloud](#uc-doc-pro-and-cloud).
+After installing the integration, sign in via **Settings → Devices & services → Add integration → Ultra Card Connect**. See [Pro and Cloud](#uc-doc-pro-and-cloud) and [Ultra Card Hub](#uc-doc-ultra-card-hub).
 
 ### Sidebar Hub is missing
 
-The Hub is served by the **Ultra Card Connect integration**, not HACS. Update the integration in HACS → Integrations and restart HA. Just updating the card does **not** update the Hub.
+The Hub is served by the **Ultra Card Connect** integration, not HACS frontend. Update the integration in HACS → Integrations and restart HA. Just updating the card does **not** update the Hub. See [Ultra Card Hub](#uc-doc-ultra-card-hub).
+
+### Hub Docs look outdated or module help opens the wrong page
+
+1. Update **Ultra Card Connect** via HACS (the integration ships the bundled wiki).
+2. Restart Home Assistant, then hard-refresh the browser.
+3. On the Hub **Docs** tab, click **Refresh**.
+4. If a module **?** help icon opens Home instead of the module page, that module may not have a wiki page — check [Modules Overview](#uc-doc-modules-overview).
+
+### Dropdown menu clipped at screen edge
+
+Set **Menu direction** to **Up** or **Down** in the Dropdown module General tab (instead of Auto). Press **Escape** to close a stuck open menu.
+
+### Slider carousel stuck between pages on iPhone / iPad
+
+Fixed in v3.5 — update Ultra Card via HACS. The carousel now snaps to the nearest page when a swipe ends mid-slide.
 
 ### Cloud sync paused / errors
 
-Open the cloud icon in the editor — it shows the last sync error. Re-authenticate via **Settings → Devices & services → Ultra Card Connect → Configure**.
+Open the cloud icon in the editor — it shows the last sync error. Re-authenticate via **Settings → Devices & services → Ultra Card Pro Cloud → Configure**.
 
 ---
 
@@ -156,7 +171,9 @@ By default, **export** strips known sensitive fields (IPs, tokens, image URLs) b
 
 ## Documentation link goes to the homepage
 
-Fixed in v3.4.0. The README "Documentation" link now points to [`docs/`](https://github.com/WJDDesigns/Ultra-Card/tree/main/docs). The wiki you're reading now is the canonical landing page.
+- **README / GitHub:** the Documentation link points to [this wiki](https://github.com/WJDDesigns/Ultra-Card/wiki).
+- **In Home Assistant:** use **Ultra Card Hub → Docs** for the bundled copy ([Ultra Card Hub](#uc-doc-ultra-card-hub)).
+- **Module editor:** click the **`?`** icon in a module's header to jump to that module's wiki page.
 
 ---
 

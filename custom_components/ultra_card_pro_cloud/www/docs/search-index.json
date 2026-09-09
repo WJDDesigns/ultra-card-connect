@@ -204,6 +204,23 @@
     ]
   },
   {
+    "slug": "module-auto-entities-list",
+    "title": "Auto Entities List",
+    "excerpt": "Module type: auto_entity_list · Category: Data · Free Dynamically discover and list Home Assistant entities by domain, device class, state, and keyword — with pinned/hidden overrides, sort options, an",
+    "headings": [
+      "Auto Entities List",
+      "Features",
+      "Configuration",
+      "Filters",
+      "Display",
+      "Pinned & hidden",
+      "Sort",
+      "Actions / Logic / Design",
+      "Examples",
+      "Related"
+    ]
+  },
+  {
     "slug": "module-background",
     "title": "Background",
     "excerpt": "Module type: background · Category: Media · Free Add custom background images to your dashboard view. Renders behind everything else as a full card or full view background. Upload image, URL, or entit",
@@ -240,6 +257,22 @@
       "Colors & gradients",
       "Labels",
       "Animations",
+      "Actions / Logic / Design",
+      "Examples",
+      "Related"
+    ]
+  },
+  {
+    "slug": "module-battery-monitor",
+    "title": "Battery Monitor",
+    "excerpt": "Module type: battery_monitor · Category: Data · Free Auto discovers battery sensors across your Home Assistant instance and highlights devices that need charging. Phones, vacuums, trackers, sensors — ",
+    "headings": [
+      "Battery Monitor",
+      "Features",
+      "Configuration",
+      "Discovery",
+      "Display",
+      "Thresholds & colors",
       "Actions / Logic / Design",
       "Examples",
       "Related"
@@ -490,6 +523,9 @@
       "Pro / Cloud",
       "Pro modules show \"Sign in to use\"",
       "Sidebar Hub is missing",
+      "Hub Docs look outdated or module help opens the wrong page",
+      "Dropdown menu clipped at screen edge",
+      "Slider carousel stuck between pages on iPhone / iPad",
       "Cloud sync paused / errors",
       "Performance",
       "High CPU on the dashboard tab",
@@ -620,6 +656,7 @@
       "Icon",
       "Template mode",
       "Layout & sizing",
+      "Actions sync",
       "Examples",
       "Related"
     ]
@@ -810,7 +847,7 @@
   {
     "slug": "modules-overview",
     "title": "Modules Overview",
-    "excerpt": "Ultra Card ships 74 modules organized into seven categories. Every module has the same 4 tab editor (General / Actions / Logic / Design), so once you've learned one you've learned them all. Pro module",
+    "excerpt": "Ultra Card ships 69 modules organized into seven categories. Every module has the same 4 tab editor (General / Actions / Logic / Design), so once you've learned one you've learned them all. Pro module",
     "headings": [
       "Modules Overview",
       "Content",
@@ -933,7 +970,7 @@
       "What Pro adds",
       "Setup",
       "1. UltraCard.io account",
-      "2. Ultra Card Pro Cloud integration",
+      "2. Ultra Card Connect integration",
       "Cloud sync",
       "Backups & snapshots",
       "Privacy & data",
@@ -1093,6 +1130,22 @@
     ]
   },
   {
+    "slug": "module-stack",
+    "title": "Stack Overlay",
+    "excerpt": "Module type: stack · Category: Layout · Free Layer child modules on top of each other with anchor based positioning — perfect for hero images with overlaid text, camera feeds with corner badges, clock",
+    "headings": [
+      "Stack Overlay",
+      "Features",
+      "Configuration",
+      "Container",
+      "Layers",
+      "Quick start presets",
+      "Editor tips",
+      "Examples",
+      "Related"
+    ]
+  },
+  {
     "slug": "module-status-summary",
     "title": "Status Summary",
     "excerpt": "Module type: status_summary · Category: Data · Free Display entity activity with timestamps and customizable color coding. Designed as a compact \"what changed recently\" panel. Add multiple entities, e",
@@ -1171,6 +1224,7 @@
       "The Editor",
       "Selector tabs (top of the editor)",
       "Module editor — the 4 tabs",
+      "Module help (Docs)",
       "General",
       "Actions",
       "Logic",
@@ -1231,6 +1285,21 @@
       "PR title conventions",
       "Helpful scripts",
       "Recognition"
+    ]
+  },
+  {
+    "slug": "ultra-card-hub",
+    "title": "Ultra Card Hub",
+    "excerpt": "The Ultra Card Hub is a sidebar panel in Home Assistant for managing Ultra Card across all your dashboards — favorites, presets, colors, variables, templates, account settings, and built in documentat",
+    "headings": [
+      "Ultra Card Hub",
+      "Navigation groups",
+      "Docs tab (in-panel wiki)",
+      "Features",
+      "Opening docs from the card editor",
+      "Cross-tab navigation",
+      "Requirements",
+      "Troubleshooting"
     ]
   },
   {

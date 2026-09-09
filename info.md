@@ -21,7 +21,7 @@
 
 ## Requirements
 
-- Home Assistant 2024.1.0 or newer
+- Home Assistant 2024.11.0 or newer
 - A [ultracard.io](https://ultracard.io) account (free or Pro)
 - Ultra Card installed via HACS
 

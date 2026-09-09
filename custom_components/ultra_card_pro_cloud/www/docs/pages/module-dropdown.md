@@ -32,6 +32,8 @@ For each option:
 
 - **Highlight active option** — match the displayed label to entity state
 - **Auto-close** — close on selection (default on)
+- **Menu direction** — Auto (flip up/down based on viewport space), Up, or Down — override when the menu is clipped near the screen edge
+- **Escape** — press Escape to close an open menu
 
 ### Actions / Logic / Design
 

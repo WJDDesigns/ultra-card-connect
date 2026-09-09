@@ -19,7 +19,11 @@ Ultra Card has a single visual editor, divided into **selector tabs** at the top
 
 ## Module editor — the 4 tabs
 
-Click any module in the **Layout** view to open its editor. Every module shows the same four tabs:
+Click any module in the **Layout** view to open its editor. Every module shows the same four tabs.
+
+### Module help (Docs)
+
+Each module editor header includes a **`?` help icon**. Click it to open **Ultra Card Hub → Docs** on that module's wiki page (e.g. `module-bar` for the Bar module). The card editor **About** tab also has a **Documentation in Ultra Card Hub** button. See [Ultra Card Hub](#uc-doc-ultra-card-hub).
 
 ### General
 Module-specific configuration — entity selectors, text, icons, layout knobs unique to that module type.

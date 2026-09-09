@@ -2,6 +2,42 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [1.8.0] - 2026-09-09
+
+The stable 1.8.0 release. Connect bundles the Ultra Card 3.10.0 Hub with a redesigned look on every tab, adds the endpoint Ultra Card 3.10 uses to keep your global theme in sync, and closes a set of security and reliability gaps found in a full audit of the integration. Your existing sign-in carries over; nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant. You no longer need to hard refresh your browser for the Hub to update; from this release on Connect handles that for you.
+
+### 🚀 New Features
+
+- **Added the redesigned Ultra Card Hub** - The bundled sidebar panel is now Ultra Card 3.10.0 with a refreshed look on every tab: a branded header with your account chip, a new Home page with quick actions and the latest release notes, consistent cards and buttons across Favorites, Presets, Themes, Colors, Variables, Templates, Account and Docs, and a tab strip you can drive with the keyboard. Layouts adapt properly on phones and narrow sidebars
+- **Added global theme sync** - Ultra Card 3.10 can now store your global theme default in Connect, so every browser and every user on this Home Assistant sees the same look. Any signed-in user reads it; only Home Assistant admins can change it. Ultra Card detects the new `theme_settings` capability automatically
+
+### 🔧 Improvements
+
+- **Hub updates load without a hard refresh** - The panel URL now carries a content hash, so browsers stop serving a month-old Hub after an update. The panel also loads as a single module; the duplicate classic-script load that always failed in the browser console is gone
+- **Signing in from the Hub is more forgiving** - If Connect failed to start (for example Home Assistant booted before your network was up), signing in now reloads the integration on the spot instead of waiting 15 seconds and blaming your password. First-time sign-in tells you when ultracard.io cannot be reached rather than reporting bad credentials
+- **Signing out is complete** - Sign-out now revokes the token on ultracard.io, clears the cached Pro status, and dismisses any pending "Reauthenticate" repair
+- **Clearer status in the Hub** - Diagnostics tiles stay neutral until a check has actually run, billing errors say what went wrong in plain language, the Colors tab tells you whether colours are stored in Home Assistant or only in this browser, and sync times read as "5m ago" instead of raw timestamps
+- **Smart Cards run as you** - Assist requests from Smart Cards now carry the requesting Home Assistant user, so exposure rules and the activity log reflect who asked. Prompts are capped at 4000 characters and the free daily counter can no longer be undercounted by simultaneous requests
+- **Bundled documentation refreshed** - The Docs tab now carries the latest 80 pages from the Ultra Card wiki, including the 3.10 Themes and Ultra Dashboard guides
+- **Kept up with Home Assistant** - Connect now declares its configuration schema, passes the config entry to the update coordinator explicitly, and reads files off the event loop. Minimum Home Assistant version is now 2024.11.0
+
+### 🐛 Bug Fixes
+
+- **Fixed the 24-hour grace period never kicking in** - A DNS hiccup or a brief ultracard.io outage revoked Pro immediately instead of keeping your cached access for 24 hours as documented. Connection errors were being re-wrapped before the grace-period check ran
+- **Fixed a boot-time outage permanently failing the integration** - If ultracard.io was unreachable when Home Assistant started, Connect stayed failed until you reloaded it by hand. Transient failures now retry automatically, and wrong credentials open the reauthenticate prompt instead
+- **Fixed the cloud proxy accepting paths that escaped its allowlist** - A URL containing `..` segments (including percent-encoded ones) passed the check but was normalised by the HTTP client before sending, which could reach other WordPress endpoints with the shared token. The proxy now parses and canonicalises every URL, and requires the exact ultracard.io scheme, host and port
+- **Fixed the proxy exposing token endpoints to the browser** - `/jwt-auth/v1/*` could previously be proxied, which would hand a fresh token to the browser or let one admin revoke the shared token for everyone. Sign-in, refresh and revoke are now handled only by the integration
+- **Fixed tokens appearing in debug logs** - Sign-in and refresh response bodies (which contain the JWT and refresh token) are no longer written to the log at debug level
+- **Fixed `Retry-After` handling** - A date-formatted header no longer crashes the request, and a very large value can no longer stall Connect for hours
+- **Fixed startup logs reporting `v1.0.0`** - The version is now read from `manifest.json` everywhere, so logs and diagnostics agree
+- **Fixed the Presets tab showing "Showing 0 of 0 presets" while still loading**, and centred the loading spinner
+- **Fixed the active Hub tab scrolling out of view on phones** when opening a tab from a link or the account chip
+- **Fixed saving favourite colours failing on unusual `order` values**, and capped the list size
+- **Fixed account registration accepting malformed email addresses** before relaying them to ultracard.io
+- **Fixed cloud outage messages naming host and CDN internals** - Users now see a clear, generic message and are asked to retry
+
 ## [1.7.1] - 2026-08-16
 
 ### Fixed
