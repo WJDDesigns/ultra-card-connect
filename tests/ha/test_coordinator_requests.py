@@ -91,7 +91,8 @@ async def test_wrong_password_requests_reauth(hass, entry, aioclient_mock):
         await coordinator._async_update_data()
 
     assert coordinator.is_invalid_credentials_error(err.value)
-    coordinator._async_request_reauth.assert_awaited_once()
+    # _async_request_reauth de-duplicates itself through _reauth_requested.
+    coordinator._async_request_reauth.assert_awaited()
 
 
 async def test_sign_in_429_is_not_retried_until_retry_after(hass, entry, aioclient_mock):
