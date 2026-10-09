@@ -2,6 +2,25 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [Unreleased]
+
+Fewer requests to ultracard.io and fewer false "sign in again" prompts.
+
+### 🐛 Fixes
+
+- **No more "Reauthenticate" repair when only the session expired** - When ultracard.io refuses the session token, Connect now renews it and carries on. It asks you to sign in again only when ultracard.io rejects the password itself, and clears the repair once sign-in works.
+- **A typo in the Hub no longer signs you out** - The Hub checks a new username and password before saving them, and answers straight away instead of after 15 seconds.
+- **Clearer error when ultracard.io's bot protection blocks sign-in** - Setup and reauth used to report this as a wrong password.
+
+### 🔧 Improvements
+
+- **Much lighter on ultracard.io** - Your profile is read once a day instead of every 55 minutes, setup and reauth sign in once instead of twice, and a long outage no longer throws away working sign-ins.
+- **Reauth shows your username** and there is a new **Reconfigure** option to switch accounts.
+- **Hub requests renew an expiring session** instead of failing until the next poll.
+- **Diagnostics no longer include your username or email.**
+- The status sensor's name and states are translatable, its state icons show, and its changing attributes no longer write a history row every poll.
+- Creating an account from the Hub is limited to admins and to once a minute.
+
 ## [1.8.2] - 2026-10-09
 
 A stable release that brings the bundled Hub up to Ultra Card 3.13.2. Nothing needs to be reconfigured.

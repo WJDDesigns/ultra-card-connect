@@ -50,7 +50,12 @@ class UltraCardProCloudAuthSensor(CoordinatorEntity, SensorEntity):
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = ["connected", "disconnected", "authenticating"]
     _attr_translation_key = "auth_status"
-    _attr_icon = "mdi:cloud"
+    # The name and state icons come from strings.json / icons.json.
+    # These change every poll or are account details: keep them out of the
+    # recorder so the sensor does not write a history row every 55 minutes.
+    _unrecorded_attributes = frozenset(
+        {"email", "last_poll", "connected_at", "features", "capabilities"}
+    )
 
     def __init__(
         self,
@@ -61,9 +66,9 @@ class UltraCardProCloudAuthSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         
         self._attr_unique_id = f"{entry.entry_id}_auth_status"
-        self._attr_name = "Authentication Status"
-        
-        # This makes the entity ID predictable: sensor.ultra_card_pro_cloud_authentication_status
+
+        # Ultra Card and the Hub look the sensor up by this exact id, so keep it
+        # fixed whatever the translated name is.
         self.entity_id = "sensor.ultra_card_pro_cloud_authentication_status"
 
     @property

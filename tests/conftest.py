@@ -22,3 +22,10 @@ def load_module(module_name: str, filename: str):
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
+
+
+try:
+    import pytest_homeassistant_custom_component  # noqa: F401
+except ImportError:
+    # The Home Assistant-backed tests need requirements-test-ha.txt.
+    collect_ignore = ["ha"]

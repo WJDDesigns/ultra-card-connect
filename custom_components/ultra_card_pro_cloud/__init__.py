@@ -29,6 +29,7 @@ from .const import (
     DOMAIN,
     DATA_COORDINATOR,
     DATA_AUTH,
+    ERROR_BOT_CHALLENGE,
     ERROR_RATE_LIMITED,
     INTEGRATION_VERSION,
     PANEL_URL_PATH,
@@ -38,7 +39,9 @@ from .const import (
     PROXY_ALLOWED_METHODS,
     is_proxy_url_allowed,
 )
-from .coordinator import UltraCardProCloudCoordinator
+from .bot_challenge import BOT_CHALLENGE_MESSAGE, is_bot_challenge
+from .config_flow import BotChallenge, CannotConnect, InvalidAuth, RateLimited, validate_auth
+from .coordinator import USER_AGENT, UltraCardProCloudCoordinator
 from .helpers import (
     build_local_smart_preset,
     build_smart_tier_access,
@@ -311,7 +314,10 @@ class UltraCardLoginView(HomeAssistantView):
             return self.json({"error": "Invalid JSON"}, status_code=400)
 
         username = (body.get("username") or body.get("email") or "").strip()
-        password = (body.get("password") or "").strip()
+        # Passwords may legitimately start or end with spaces; never strip them.
+        password = body.get("password") or ""
+        if not isinstance(password, str):
+            password = ""
 
         if not username or not password:
             return self.json({"error": "username and password are required"}, status_code=400)
@@ -323,10 +329,30 @@ class UltraCardLoginView(HomeAssistantView):
         entries = hass.config_entries.async_entries(DOMAIN)
 
         if entries:
-            # Update the existing config entry with the new credentials
+            # Check the credentials before storing them: a typo must not sign
+            # out a working install or raise a reauth repair. The tokens this
+            # call issues are reused by the coordinator (see AuthState.pending).
+            try:
+                await validate_auth(hass, username, password)
+            except InvalidAuth:
+                return self.json(
+                    {"error": "Invalid ultracard.io username or password."}, status_code=401
+                )
+            except RateLimited:
+                wait = get_auth_state(hass.data.setdefault(DOMAIN, {})).sign_in_wait_seconds()
+                return self.json({"error": sign_in_wait_message(wait)}, status_code=429)
+            except BotChallenge:
+                return self.json({"error": BOT_CHALLENGE_MESSAGE}, status_code=502)
+            except CannotConnect:
+                return self.json(
+                    {"error": "Cannot reach ultracard.io — check your network and try again."},
+                    status_code=502,
+                )
+
             entry = entries[0]
             hass.config_entries.async_update_entry(
                 entry,
+                title=f"Ultra Card ({username})",
                 data={**entry.data, CONF_USERNAME: username, CONF_PASSWORD: password},
             )
             # A pending "reauthenticate" repair is now stale: the user just
@@ -335,9 +361,15 @@ class UltraCardLoginView(HomeAssistantView):
 
             coordinator = _get_entry_coordinator(hass, entry)
             if coordinator:
-                # Force the coordinator to re-authenticate with fresh credentials
+                # Switch the coordinator to the new account (it adopts the
+                # token issued above) and poll once.
                 coordinator.reset_auth_state()
                 await coordinator.async_refresh()
+                if not (coordinator.data or {}).get("authenticated"):
+                    return self.json(
+                        {"error": _login_failure_reason(hass)},
+                        status_code=_login_failure_status(hass),
+                    )
             else:
                 # Entry never finished setup (e.g. it is in SETUP_RETRY after a
                 # bad first refresh). Reload so the new credentials are used now
@@ -364,6 +396,8 @@ class UltraCardLoginView(HomeAssistantView):
                         {"error": sign_in_wait_message(wait)},
                         status_code=429,
                     )
+                if reason == ERROR_BOT_CHALLENGE:
+                    return self.json({"error": BOT_CHALLENGE_MESSAGE}, status_code=502)
                 if reason == "cannot_connect":
                     return self.json(
                         {"error": "Cannot reach ultracard.io — check your network and try again."},
@@ -447,6 +481,22 @@ class UltraCardLogoutView(HomeAssistantView):
         return self.json({"success": True})
 
 
+REGISTER_COOLDOWN_SECONDS = 60
+_REGISTER_LAST_KEY = f"{DOMAIN}_register_last"
+
+
+async def _register_response_json(resp) -> dict | None:
+    """Parse a register response; None for a bot-challenge page, {} for non-JSON."""
+    text = await resp.text()
+    if is_bot_challenge(resp, text):
+        return None
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 class UltraCardRegisterView(HomeAssistantView):
     """POST /api/ultra_card_pro_cloud/register — create account and send password setup email."""
 
@@ -456,6 +506,20 @@ class UltraCardRegisterView(HomeAssistantView):
 
     async def post(self, request: web.Request) -> web.Response:
         hass: HomeAssistant = request.app["hass"]
+        # Creating an account sends a welcome email; only admins may trigger
+        # it, and not more than once per REGISTER_COOLDOWN_SECONDS.
+        if not _request_can_manage_shared_auth(request):
+            return self.json(
+                {"error": "Only Home Assistant admins can create an ultracard.io account here."},
+                status_code=403,
+            )
+        loop = asyncio.get_running_loop()
+        last = hass.data.get(_REGISTER_LAST_KEY)
+        if last is not None and loop.time() - last < REGISTER_COOLDOWN_SECONDS:
+            return self.json(
+                {"error": "Please wait a minute before trying to register again."},
+                status_code=429,
+            )
         try:
             body = await request.json()
         except Exception:
@@ -475,7 +539,9 @@ class UltraCardRegisterView(HomeAssistantView):
             return self.json({"error": "Please enter a valid email address"}, status_code=400)
 
         # Register on ultracard.io via our custom WordPress endpoint
+        hass.data[_REGISTER_LAST_KEY] = loop.time()
         session = async_get_clientsession(hass)
+        headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
         payload = {
             "username": username or email.split("@")[0],
             "email": email,
@@ -488,9 +554,12 @@ class UltraCardRegisterView(HomeAssistantView):
             async with session.post(
                 f"{API_BASE_URL}/ultra-card/v1/register",
                 json=payload,
+                headers=headers,
                 timeout=aiohttp_timeout(15),
             ) as resp:
-                data = await resp.json()
+                data = await _register_response_json(resp)
+                if data is None:
+                    return self.json({"error": BOT_CHALLENGE_MESSAGE}, status_code=502)
                 if resp.ok:
                     message = data.get("message") or (
                         "Account created. Check your email inbox, junk, or spam for the ultracard.io message to finish setting your password, then come back here to sign in."
@@ -511,9 +580,12 @@ class UltraCardRegisterView(HomeAssistantView):
                     async with session.post(
                         f"{API_BASE_URL}/ultra-card/v1/register",
                         data=payload,
+                        headers=headers,
                         timeout=aiohttp_timeout(15),
                     ) as retry_resp:
-                        retry_data = await retry_resp.json()
+                        retry_data = await _register_response_json(retry_resp)
+                        if retry_data is None:
+                            return self.json({"error": BOT_CHALLENGE_MESSAGE}, status_code=502)
                         if retry_resp.ok:
                             message = retry_data.get("message") or (
                                 "Account created. Check your email inbox, junk, or spam for the ultracard.io message to finish setting your password, then come back here to sign in."
@@ -694,10 +766,10 @@ class UltraCardProxyView(HomeAssistantView):
         domain_data = hass.data.get(DOMAIN, {})
         entry_data = domain_data.get(entry.entry_id, {})
         coordinator = entry_data.get(DATA_COORDINATOR)
-        if not coordinator or not getattr(coordinator, "_jwt_token", None):
+        token = await coordinator.async_get_valid_token() if coordinator else None
+        if not token:
             return self.json({"error": "Not authenticated", "_status": 401, "_body": None}, status_code=401)
 
-        token = coordinator._jwt_token
         session = async_get_clientsession(hass)
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
@@ -1030,10 +1102,10 @@ class UltraCardMediaUploadView(HomeAssistantView):
         domain_data = hass.data.get(DOMAIN, {})
         entry_data = domain_data.get(entry.entry_id, {})
         coordinator = entry_data.get(DATA_COORDINATOR)
-        if not coordinator or not getattr(coordinator, "_jwt_token", None):
+        token = await coordinator.async_get_valid_token() if coordinator else None
+        if not token:
             return self.json({"message": "Not authenticated"}, status_code=401)
 
-        token = coordinator._jwt_token
         reader = await request.multipart()
         photo_bytes: bytes | None = None
         filename = "upload.bin"
@@ -1140,27 +1212,18 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     # also installed. This eliminates the "Unable to load custom panel" error
     # that occurs when the /hacsfiles/Ultra-Card/ path doesn't exist.
     www_path = Path(__file__).parent / "www"
-    if www_path.exists() and not hass.data.get(f"{DOMAIN}_static_registered"):
+    www_exists = await hass.async_add_executor_job(www_path.exists)
+    if www_exists and not hass.data.get(f"{DOMAIN}_static_registered"):
         try:
-            # Use the modern async API (HA 2024.x+). Falls back to the legacy
-            # synchronous method for older installations.
             from homeassistant.components.http import StaticPathConfig
             await hass.http.async_register_static_paths([
                 StaticPathConfig(PANEL_STATIC_URL_PATH, str(www_path), cache_headers=True),
             ])
             hass.data[f"{DOMAIN}_static_registered"] = True
             _LOGGER.info("Registered static path %s → %s", PANEL_STATIC_URL_PATH, www_path)
-        except (ImportError, AttributeError):
-            # Fallback for HA versions that don't have async_register_static_paths
-            try:
-                hass.http.register_static_path(PANEL_STATIC_URL_PATH, str(www_path), cache_headers=True)
-                hass.data[f"{DOMAIN}_static_registered"] = True
-                _LOGGER.info("Registered static path (legacy) %s → %s", PANEL_STATIC_URL_PATH, www_path)
-            except Exception as static_err:
-                _LOGGER.warning("Could not register static path for panel JS: %s", static_err)
         except Exception as static_err:
             _LOGGER.warning("Could not register static path for panel JS: %s", static_err)
-    elif not www_path.exists():
+    elif not www_exists:
         _LOGGER.warning(
             "ultra-card-panel.js not found in %s — sidebar panel may fail to load. "
             "Re-deploy the integration to include the www/ folder.",
@@ -1241,7 +1304,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         else:
             _LOGGER.info("Ultra Card Connect set up without an account; sign in from the Hub")
 
-    coordinator.async_add_listener(_create_update_listener(hass, entry))
+    entry.async_on_unload(
+        coordinator.async_add_listener(_create_update_listener(hass, entry))
+    )
 
     try:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

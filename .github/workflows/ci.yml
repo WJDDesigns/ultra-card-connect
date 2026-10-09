@@ -48,4 +48,23 @@ jobs:
         run: pytest tests/ -q
 
       - name: Lint Python integration
-        run: pip install ruff && ruff check custom_components/ultra_card_pro_cloud/
+        run: ruff check custom_components/ultra_card_pro_cloud/ tests/
+
+  ha-tests:
+    # Request-count tests against a real Home Assistant core: they guard the
+    # ultracard.io sign-in limit and the users/me cost (see CLAUDE.md).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Home Assistant test harness
+        run: pip install -r requirements-test-ha.txt
+
+      - name: Run Home Assistant tests
+        run: pytest tests/ha -q
