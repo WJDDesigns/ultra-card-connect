@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-10-09T15:28:09.472Z",
+  "synced_at": "2026-10-09T15:30:32.815Z",
   "ultra_card_version": "3.13.2",
   "ultra_card_commit": "446a1c16",
   "files": {
@@ -84,7 +84,7 @@
     "uc-m-cover.dcedbe13.js": "12c434017f164e79a9e7221094894e52b081d2bed1a2548a82e4122cd1e78ac4",
     "uc-m-dog-duty.82be90fc.js": "209176d6702ca90baeddb10c30486472b5bd51c286678f0143568330289d21e2",
     "uc-m-drawer.c97ea851.js": "48436efe168e600a4c75d99d15b66cb4aaabae9a72c3e6a0da7706d5be940f6d",
-    "uc-m-dropdown.3f39b91f.js": "ba3073df9a0ad232001038cbb245c01b9d1d629cf72a59f4560535678cac8be6",
+    "uc-m-dropdown.1dfafd55.js": "5daa17b940f8dceae359dd08dc8a7b0f0ffb45f753cef3f923ef3bb73b78b60f",
     "uc-m-dynamic-list.aeeaadff.js": "001aba0a51e6f8902caea10b0507d2fdf06bdc9faaae1def69bac4c7b4a50218",
     "uc-m-dynamic-weather.3224dd79.js": "22da42821204bb6398713d03ac6755ec3ce2b3c0605cf3250559c932cfce1bda",
     "uc-m-energy-display.e4e9f650.js": "8b695879f955883efeddf7984df3daf96a8f5fa907d2f142032846533bdee305",
