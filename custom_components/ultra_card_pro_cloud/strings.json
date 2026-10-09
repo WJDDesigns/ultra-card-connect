@@ -28,6 +28,7 @@
     "error": {
       "invalid_auth": "Invalid username or password. Please check your credentials.",
       "cannot_connect": "Cannot connect to ultracard.io. Please check your internet connection and try again.",
+      "rate_limited": "ultracard.io is limiting sign-ins from this network. Wait 10 minutes, then try again.",
       "unknown": "An unexpected error occurred. Please try again."
     },
     "abort": {
@@ -35,6 +36,7 @@
       "reauth_successful": "Reauthentication successful!",
       "invalid_auth": "Invalid username or password. Please check your credentials.",
       "cannot_connect": "Cannot connect to ultracard.io. Please check your internet connection and try again.",
+      "rate_limited": "ultracard.io is limiting sign-ins from this network. Wait 10 minutes, then try again.",
       "unknown": "An unexpected error occurred. Please try again."
     }
   }

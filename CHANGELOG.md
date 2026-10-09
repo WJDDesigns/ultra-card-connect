@@ -2,6 +2,17 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [1.8.1] - 2026-10-09
+
+A stable fix release for how Connect signs in to ultracard.io. During the October 8 ultracard.io outage, some installs signed in over and over instead of waiting for the site to recover. 1.8.1 keeps your sign-in across retries and respects ultracard.io's request to slow down. The bundled Hub is unchanged (Ultra Card 3.10.0), and nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant.
+
+### 🐛 Bug Fixes
+
+- **Fixed Connect signing in again on every startup retry** - If ultracard.io was slow or unavailable while Connect started, each automatic retry signed in from scratch, roughly every minute, until the site recovered. Connect now keeps its sign-in across retries and reloads and only signs in again when the token is gone or has expired
+- **Connect now waits out ultracard.io's sign-in limit** - When ultracard.io asks Connect to slow down, Connect waits the full time it asks for (usually 10 minutes) instead of trying again after 30 seconds, which kept the limit from ever clearing. The Hub and the setup dialog now say why sign-in is paused instead of reporting a connection failure
+
 ## [1.8.0] - 2026-09-09
 
 The stable 1.8.0 release. Connect bundles the Ultra Card 3.10.0 Hub with a redesigned look on every tab, adds the endpoint Ultra Card 3.10 uses to keep your global theme in sync, and closes a set of security and reliability gaps found in a full audit of the integration. Your existing sign-in carries over; nothing needs to be reconfigured.

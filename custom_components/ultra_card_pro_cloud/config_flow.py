@@ -20,15 +20,16 @@ from homeassistant.helpers.selector import (
     SelectSelectorMode,
 )
 
+from .auth_state import get_auth_state
 from .const import (
     DOMAIN,
     API_BASE_URL,
     JWT_ENDPOINT,
     ERROR_INVALID_AUTH,
     ERROR_CANNOT_CONNECT,
+    ERROR_RATE_LIMITED,
     ERROR_UNKNOWN,
 )
-from .coordinator import _retry_after_seconds
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +86,12 @@ async def validate_auth(
     """Validate the user credentials."""
     session = async_get_clientsession(hass)
     url = f"{API_BASE_URL}{JWT_ENDPOINT}/token"
-    
+    auth_state = get_auth_state(hass.data.setdefault(DOMAIN, {}))
+
+    if auth_state.sign_in_wait_seconds() > 0:
+        _LOGGER.warning("Sign-in skipped: ultracard.io is still rate-limiting this network")
+        raise RateLimited
+
     _LOGGER.debug("🔐 Validating auth for user: %s", username)
 
     for attempt in range(MAX_RETRIES):
@@ -101,13 +107,14 @@ async def validate_auth(
                 # Never log the body here: a 2xx body contains the JWT.
                 _LOGGER.debug("📥 Auth response length: %d bytes", len(response_text))
 
-                # Handle rate limiting (JWT Auth Pro feature)
+                # Retrying inside the window would restart ultracard.io's
+                # sliding limit; the block is shared with the coordinator.
                 if response.status == 429:
-                    retry_after = _retry_after_seconds(response)
-                    _LOGGER.warning("⏳ Rate limited, waiting %s seconds before retry (attempt %d/%d)", 
-                                   retry_after, attempt + 1, MAX_RETRIES)
-                    await asyncio.sleep(retry_after)
-                    continue
+                    wait = auth_state.block_sign_in(response.headers.get("Retry-After"))
+                    _LOGGER.warning(
+                        "⏳ ultracard.io rate-limited sign-in; not retrying for %.0f seconds", wait
+                    )
+                    raise RateLimited
                 
                 # Handle auth failures
                 if response.status == 401 or response.status == 403:
@@ -210,9 +217,7 @@ async def validate_auth(
                 await asyncio.sleep(RETRY_DELAY * (attempt + 1))
                 continue
             raise CannotConnect from err
-        except InvalidAuth:
-            raise
-        except CannotConnect:
+        except (InvalidAuth, CannotConnect, RateLimited):
             raise
         except Exception as err:
             _LOGGER.exception("❌ Unexpected error during authentication (%s): %s", type(err).__name__, err)
@@ -281,6 +286,8 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidAuth:
                 _LOGGER.warning("Invalid credentials provided")
                 errors["base"] = ERROR_INVALID_AUTH
+            except RateLimited:
+                errors["base"] = ERROR_RATE_LIMITED
             except CannotConnect:
                 _LOGGER.warning("Cannot connect to ultracard.io")
                 errors["base"] = ERROR_CANNOT_CONNECT
@@ -317,6 +324,9 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except InvalidAuth:
             _LOGGER.warning("API-initiated sign-in rejected: invalid credentials")
             return self.async_abort(reason="invalid_auth")
+        except RateLimited:
+            _LOGGER.warning("API-initiated sign-in held back: ultracard.io is rate-limiting")
+            return self.async_abort(reason=ERROR_RATE_LIMITED)
         except CannotConnect:
             _LOGGER.warning("API-initiated sign-in failed: cannot reach ultracard.io")
             return self.async_abort(reason="cannot_connect")
@@ -364,6 +374,8 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except InvalidAuth:
                 _LOGGER.warning("⚠️ Invalid credentials during re-auth")
                 errors["base"] = ERROR_INVALID_AUTH
+            except RateLimited:
+                errors["base"] = ERROR_RATE_LIMITED
             except CannotConnect:
                 _LOGGER.warning("⚠️ Cannot connect to ultracard.io during re-auth")
                 errors["base"] = ERROR_CANNOT_CONNECT
@@ -384,3 +396,7 @@ class CannotConnect(Exception):
 
 class InvalidAuth(Exception):
     """Error to indicate there is invalid auth."""
+
+
+class RateLimited(Exception):
+    """Error to indicate ultracard.io is refusing sign-ins from this network for now."""

@@ -21,6 +21,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
+from .auth_state import get_auth_state, sign_in_wait_message
 from .const import (
     API_BASE_URL,
     CONF_PASSWORD,
@@ -28,6 +29,7 @@ from .const import (
     DOMAIN,
     DATA_COORDINATOR,
     DATA_AUTH,
+    ERROR_RATE_LIMITED,
     INTEGRATION_VERSION,
     PANEL_URL_PATH,
     PANEL_JS_URL,
@@ -314,6 +316,10 @@ class UltraCardLoginView(HomeAssistantView):
         if not username or not password:
             return self.json({"error": "username and password are required"}, status_code=400)
 
+        wait = get_auth_state(hass.data.setdefault(DOMAIN, {})).sign_in_wait_seconds()
+        if wait > 0:
+            return self.json({"error": sign_in_wait_message(wait)}, status_code=429)
+
         entries = hass.config_entries.async_entries(DOMAIN)
 
         if entries:
@@ -351,6 +357,12 @@ class UltraCardLoginView(HomeAssistantView):
                     return self.json(
                         {"error": "Invalid ultracard.io username or password."},
                         status_code=401,
+                    )
+                if reason == ERROR_RATE_LIMITED:
+                    wait = get_auth_state(hass.data.setdefault(DOMAIN, {})).sign_in_wait_seconds()
+                    return self.json(
+                        {"error": sign_in_wait_message(wait)},
+                        status_code=429,
                     )
                 if reason == "cannot_connect":
                     return self.json(
@@ -393,6 +405,8 @@ def _login_failure_reason(hass: HomeAssistant) -> str:
 
 def _login_failure_status(hass: HomeAssistant) -> int:
     """Bot protection and outages are upstream failures, not bad credentials."""
+    if get_auth_state(hass.data.setdefault(DOMAIN, {})).sign_in_wait_seconds() > 0:
+        return 429
     reason = _coordinator_last_error(hass) or ""
     if reason and "username or password" not in reason:
         return 502
@@ -1289,4 +1303,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN][DATA_AUTH] = {"authenticated": False}
 
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Forget the entry's tokens; unload keeps them so a reload can reuse them."""
+    get_auth_state(hass.data.setdefault(DOMAIN, {})).drop(entry.entry_id)
 

@@ -34,6 +34,7 @@ DATA_AUTH = "auth_data"
 # Error messages
 ERROR_INVALID_AUTH = "invalid_auth"
 ERROR_CANNOT_CONNECT = "cannot_connect"
+ERROR_RATE_LIMITED = "rate_limited"
 ERROR_UNKNOWN = "unknown"
 
 # Panel (Ultra Card Hub sidebar)
