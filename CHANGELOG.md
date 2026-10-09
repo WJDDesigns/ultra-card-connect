@@ -2,6 +2,16 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
+## [1.8.2] - 2026-10-09
+
+A stable release that brings the bundled Hub up to Ultra Card 3.13.2. Nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant.
+
+### 🔧 Improvements
+
+- **Updated the bundled Hub to Ultra Card 3.13.2** - The sidebar Hub is now in Simplified Chinese when Home Assistant is set to it, and the FreeSpace card on Hub → Home links to the guide at [ultracard.io/freespace](https://ultracard.io/freespace/)
+
 ## [1.8.1] - 2026-10-09
 
 A stable release that brings the bundled Hub up to Ultra Card 3.13.1 and fixes how Connect signs in to ultracard.io. During the October 8 ultracard.io outage, some installs signed in over and over instead of waiting for the site to recover. 1.8.1 keeps your sign-in across retries and respects ultracard.io's request to slow down. Nothing needs to be reconfigured.
