@@ -4,9 +4,13 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ## [1.8.1] - 2026-10-09
 
-A stable fix release for how Connect signs in to ultracard.io. During the October 8 ultracard.io outage, some installs signed in over and over instead of waiting for the site to recover. 1.8.1 keeps your sign-in across retries and respects ultracard.io's request to slow down. The bundled Hub is unchanged (Ultra Card 3.10.0), and nothing needs to be reconfigured.
+A stable release that brings the bundled Hub up to Ultra Card 3.13.1 and fixes how Connect signs in to ultracard.io. During the October 8 ultracard.io outage, some installs signed in over and over instead of waiting for the site to recover. 1.8.1 keeps your sign-in across retries and respects ultracard.io's request to slow down. Nothing needs to be reconfigured.
 
 **After updating:** restart Home Assistant.
+
+### 🔧 Improvements
+
+- **Updated the bundled Hub to Ultra Card 3.13.1** - The sidebar Hub now matches the current stable Ultra Card, including Layout width on Hub → Home and the FreeSpace status card
 
 ### 🐛 Bug Fixes
 
