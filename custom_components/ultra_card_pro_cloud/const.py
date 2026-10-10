@@ -55,6 +55,7 @@ CAPABILITY_PROXY = "proxy"
 CAPABILITY_MEDIA_UPLOAD = "media_upload"
 CAPABILITY_SMART = "smart"
 CAPABILITY_THEME_SETTINGS = "theme_settings"
+CAPABILITY_LINKED_ROWS = "linked_rows"
 
 INTEGRATION_CAPABILITIES: dict[str, bool] = {
     CAPABILITY_FAVORITE_COLORS: True,
@@ -62,6 +63,7 @@ INTEGRATION_CAPABILITIES: dict[str, bool] = {
     CAPABILITY_MEDIA_UPLOAD: True,
     CAPABILITY_SMART: True,
     CAPABILITY_THEME_SETTINGS: True,
+    CAPABILITY_LINKED_ROWS: True,
     "diagnostics": True,
 }
 
