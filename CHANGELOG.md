@@ -2,9 +2,11 @@
 
 All notable changes to Ultra Card Connect will be documented in this file.
 
-## [Unreleased]
+## [1.9.0] - 2026-10-10
 
-Fewer requests to ultracard.io and fewer false "sign in again" prompts.
+Fewer requests to ultracard.io and fewer false "sign in again" prompts. The bundled Hub is updated to Ultra Card 3.13.3.
+
+**After updating:** restart Home Assistant.
 
 ### 🐛 Fixes
 
@@ -20,6 +22,7 @@ Fewer requests to ultracard.io and fewer false "sign in again" prompts.
 - **Diagnostics no longer include your username or email.**
 - The status sensor's name and states are translatable, its state icons show, and its changing attributes no longer write a history row every poll.
 - Creating an account from the Hub is limited to admins and to once a minute.
+- **Bundled Hub updated to Ultra Card 3.13.3.**
 
 ## [1.8.2] - 2026-10-09
 
