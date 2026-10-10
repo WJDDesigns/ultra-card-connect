@@ -21,6 +21,12 @@ TO_REDACT = {
     "jwt",
     "access_token",
     "authorization",
+    # Account identity: diagnostics get pasted into public GitHub issues.
+    "title",
+    "unique_id",
+    "username",
+    "email",
+    "user_id",
 }
 
 

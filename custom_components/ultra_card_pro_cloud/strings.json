@@ -18,7 +18,15 @@
       },
       "reauth_confirm": {
         "title": "Reauthenticate Ultra Card Connect",
-        "description": "Your credentials need to be updated. Please enter your current ultracard.io login.",
+        "description": "ultracard.io no longer accepts the stored password. Enter your current ultracard.io login.",
+        "data": {
+          "username": "Username or Email",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Change ultracard.io account",
+        "description": "Enter the ultracard.io account this Home Assistant should use.",
         "data": {
           "username": "Username or Email",
           "password": "Password"
@@ -28,16 +36,39 @@
     "error": {
       "invalid_auth": "Invalid username or password. Please check your credentials.",
       "cannot_connect": "Cannot connect to ultracard.io. Please check your internet connection and try again.",
-      "rate_limited": "ultracard.io is limiting sign-ins from this network. Wait 10 minutes, then try again.",
-      "unknown": "An unexpected error occurred. Please try again."
+      "rate_limited": "ultracard.io is limiting sign-ins from this network. Wait a few minutes, then try again.",
+      "unknown": "An unexpected error occurred. Please try again.",
+      "bot_challenge": "Can't reach Ultra Card cloud right now. Please try again in a few minutes. If this keeps happening, contact support."
     },
     "abort": {
-      "already_configured": "This account is already configured.",
+      "already_configured": "Ultra Card Connect is already set up. Sign in or change accounts from the Ultra Card sidebar or the integration's Reconfigure option.",
       "reauth_successful": "Reauthentication successful!",
       "invalid_auth": "Invalid username or password. Please check your credentials.",
       "cannot_connect": "Cannot connect to ultracard.io. Please check your internet connection and try again.",
-      "rate_limited": "ultracard.io is limiting sign-ins from this network. Wait 10 minutes, then try again.",
-      "unknown": "An unexpected error occurred. Please try again."
+      "rate_limited": "ultracard.io is limiting sign-ins from this network. Wait a few minutes, then try again.",
+      "unknown": "An unexpected error occurred. Please try again.",
+      "bot_challenge": "Can't reach Ultra Card cloud right now. Please try again in a few minutes. If this keeps happening, contact support.",
+      "reconfigure_successful": "Account updated."
+    }
+  },
+  "selector": {
+    "next_step": {
+      "options": {
+        "sign_in": "Sign in with ultracard.io account",
+        "setup_without_account": "Set up without an account (sign in later in the sidebar)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "auth_status": {
+        "name": "Authentication status",
+        "state": {
+          "connected": "Connected",
+          "disconnected": "Disconnected",
+          "authenticating": "Authenticating"
+        }
+      }
     }
   }
 }

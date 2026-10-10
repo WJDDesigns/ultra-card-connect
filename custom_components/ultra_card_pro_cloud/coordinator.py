@@ -1,8 +1,10 @@
 """Data coordinator for Ultra Card Connect."""
 from __future__ import annotations
 
-import logging
 import asyncio
+import datetime
+import json
+import logging
 import time
 from datetime import timedelta
 from typing import Any
@@ -23,13 +25,13 @@ from .const import (
     DOMAIN,
     JWT_ENDPOINT,
     SUBSCRIPTION_ENDPOINT,
-    TOKEN_REFRESH_INTERVAL,
+    POLL_INTERVAL_SECONDS,
     CONF_USERNAME,
     CONF_PASSWORD,
     GRACE_PERIOD_HOURS,
 )
 from .bot_challenge import BOT_CHALLENGE_MESSAGE, is_bot_challenge as _is_bot_challenge
-from .jwt_utils import parse_jwt_expiry
+from .jwt_utils import parse_token_response
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +39,6 @@ _LOGGER = logging.getLogger(__name__)
 MAX_RETRIES = 2  # Reduced from 3 to minimize traffic on failures
 RETRY_DELAY = 2  # seconds
 RATE_LIMIT_DELAY = 5  # seconds for 429 responses
-DEFAULT_TOKEN_EXPIRY_DAYS = 180  # Match JWT Auth Pro default
 
 # Connection settings
 USER_AGENT = "HomeAssistant/UltraCardProCloud/1.0"
@@ -54,6 +55,14 @@ class BotChallengeError(UpdateFailed):
 
 class SignInRateLimited(UpdateFailed):
     """Raised while ultracard.io is refusing sign-ins from this network."""
+
+
+class TokenRejected(UpdateFailed):
+    """A data endpoint refused the JWT (expired, revoked, or a WAF 403).
+
+    Not a credentials problem: the coordinator refreshes or signs in once and
+    retries. Only a 401/403 from /token itself means the password is wrong.
+    """
 
 
 MAX_RETRY_AFTER = 30  # seconds; never sleep longer than this inside an update
@@ -113,6 +122,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         self._auth_failure_count: int = 0
         self._reauth_requested: bool = False
         self._last_error: str | None = None
+        self._token_lock = asyncio.Lock()
 
         # Grace period caching - maintains Pro access during server outages
         self._last_successful_data: dict[str, Any] | None = None
@@ -125,7 +135,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             _LOGGER,
             config_entry=entry,
             name="Ultra Card Connect",
-            update_interval=timedelta(seconds=TOKEN_REFRESH_INTERVAL),
+            update_interval=timedelta(seconds=POLL_INTERVAL_SECONDS),
         )
 
     # Tokens live on the shared AuthSession so a setup retry or reload reuses
@@ -164,7 +174,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         sign-in block survives: ultracard.io limits by IP, not by account.
         """
         self._session.clear_tokens()
+        self._session.connected_at = None
         self._session.username = (self.entry.data or {}).get(CONF_USERNAME)
+        # The Hub validates credentials before storing them; reuse that token.
+        self._auth_state.adopt_pending(self._session)
         self._auth_failure_count = 0
         self._reauth_requested = False
         self._last_error = None
@@ -199,6 +212,19 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         )
         return None
 
+    def _abort_reauth_flows(self) -> None:
+        """Dismiss pending reauth repairs for this entry (best effort)."""
+        from homeassistant.config_entries import SOURCE_REAUTH
+
+        flow_manager = self.hass.config_entries.flow
+        for flow in flow_manager.async_progress_by_handler(DOMAIN):
+            context = flow.get("context", {})
+            if context.get("source") == SOURCE_REAUTH and context.get("entry_id") == self.entry.entry_id:
+                try:
+                    flow_manager.async_abort(flow["flow_id"])
+                except Exception as err:  # pragma: no cover - best effort
+                    _LOGGER.debug("Could not abort reauth flow: %s", err)
+
     async def _async_request_reauth(self, reason: str) -> None:
         """Surface HA reauth UI when stored credentials or tokens are invalid."""
         if self._reauth_requested:
@@ -219,12 +245,53 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
         # prompting for credentials would send the user chasing the wrong fault.
         if isinstance(err, BotChallengeError):
             return False
+        if isinstance(err, (TokenRejected, SignInRateLimited)):
+            return False
         message = str(err).lower()
         return (
             "invalid credentials" in message
-            or "token expired or revoked" in message
             or "no jwt token available after authentication" in message
         )
+
+    async def _recover_token(self) -> None:
+        """Get a new JWT after a data endpoint rejected the current one.
+
+        Prefer /token/refresh (it does not count against the sign-in limit);
+        _refresh_jwt_token falls back to one full sign-in if the refresh fails.
+        """
+        self._jwt_token = None
+        if self._refresh_token:
+            await self._refresh_jwt_token()
+        else:
+            await self._authenticate()
+
+    async def _with_token_recovery(self, fetch):
+        """Run fetch(); on a rejected token, get a new one and retry once."""
+        try:
+            return await fetch()
+        except TokenRejected:
+            _LOGGER.info("ultracard.io rejected the session token; getting a new one")
+            await self._recover_token()
+            if not self._jwt_token:
+                raise UpdateFailed("No JWT token available after authentication") from None
+            return await fetch()
+
+    async def async_get_valid_token(self) -> str | None:
+        """Return a JWT that is not about to expire, refreshing it if needed.
+
+        Used by the Hub proxy and media upload so they never forward an expired
+        token between polls. Refreshes only; never signs in per request.
+        """
+        async with self._token_lock:
+            if self._jwt_token and int(time.time()) < self._token_expires_at - 300:
+                return self._jwt_token
+            if not self._refresh_token:
+                return self._jwt_token
+            try:
+                await self._refresh_jwt_token(allow_sign_in=False)
+            except UpdateFailed as err:
+                _LOGGER.debug("Token refresh for proxy request failed: %s", err)
+            return self._jwt_token
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from API."""
@@ -243,33 +310,28 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 await self._authenticate()
             elif current_time >= self._token_expires_at - 300:  # 5 min before expiry
                 _LOGGER.info("🔄 Token expiring soon, refreshing...")
-                if self._refresh_token:
-                    try:
-                        await self._refresh_jwt_token()
-                    except (BotChallengeError, SignInRateLimited):
-                        # A full re-auth would hit the same wall.
-                        raise
-                    except Exception as e:
-                        _LOGGER.warning("⚠️ Token refresh failed, re-authenticating: %s", e)
-                        await self._authenticate()
-                else:
-                    # No refresh token, re-authenticate
-                    _LOGGER.debug("🔄 No refresh token, re-authenticating...")
-                    await self._authenticate()
+                # Falls back to a single sign-in by itself when the refresh fails.
+                await self._refresh_jwt_token()
 
             # Verify we have a token after auth attempt
             if not self._jwt_token:
                 raise UpdateFailed("No JWT token available after authentication")
 
-            # Fetch user profile data from WordPress
-            _LOGGER.debug("👤 Fetching user profile data...")
-            user_data = await self._fetch_user_profile()
-            
-            # Fetch subscription data
-            _LOGGER.debug("📡 Fetching subscription data...")
-            subscription_data = await self._fetch_subscription()
-            
-            import datetime
+            # The profile rarely changes and users/me?context=edit is expensive
+            # on ultracard.io, so it is cached on the session (see AuthSession).
+            if self._session.profile_is_stale():
+                _LOGGER.debug("Fetching user profile")
+                self._session.store_profile(
+                    await self._with_token_recovery(self._fetch_user_profile)
+                )
+            user_data = self._session.profile or {}
+
+            _LOGGER.debug("Fetching subscription data")
+            subscription_data = await self._with_token_recovery(self._fetch_subscription)
+
+            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            if not self._session.connected_at:
+                self._session.connected_at = now_iso
 
             # Token is kept in coordinator only; frontend uses integration proxy for API calls
             result = {
@@ -278,12 +340,8 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 "username": user_data.get("user_nicename") or user_data.get("name"),
                 "email": user_data.get("user_email") or user_data.get("email"),
                 "display_name": user_data.get("display_name") or user_data.get("name"),
-                "connected_at": datetime.datetime.now(
-                    datetime.timezone.utc
-                ).isoformat(),
-                "last_poll": datetime.datetime.now(
-                    datetime.timezone.utc
-                ).isoformat(),
+                "connected_at": self._session.connected_at,
+                "last_poll": now_iso,
                 "subscription": {
                     "tier": subscription_data.get("tier", "free"),
                     "status": subscription_data.get("status", "expired"),
@@ -294,6 +352,9 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             
             # Reset failure bookkeeping on success
             self._auth_failure_count = 0
+            if self._reauth_requested:
+                # A repair raised earlier is stale now that sign-in works again.
+                self._abort_reauth_flows()
             self._reauth_requested = False
             self._last_error = None
 
@@ -346,7 +407,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 return cached
             raise UpdateFailed(
                 f"Connection timed out after {REQUEST_TIMEOUT} seconds"
-            )
+            ) from None
         except aiohttp.ServerDisconnectedError as err:
             # Server closed connection unexpectedly
             self._auth_failure_count += 1
@@ -387,15 +448,9 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 if cached:
                     return cached
 
-            # While sign-ins are blocked, keep the refresh token: it is the
-            # only way back in that does not count against the limit.
-            if self._auth_failure_count >= 3 and not isinstance(err, SignInRateLimited):
-                _LOGGER.warning(
-                    "Multiple auth failures (%d), clearing tokens for fresh start",
-                    self._auth_failure_count,
-                )
-                self._session.clear_tokens()
-
+            # Tokens are never cleared because of a failure count: after an
+            # outage every install would sign in at once. Only an authoritative
+            # 401/403 from /token or /token/refresh discards them.
             if self._is_invalid_credentials_error(err):
                 await self._async_request_reauth(str(err))
 
@@ -407,13 +462,6 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                 err,
                 type(err).__name__,
             )
-
-            if self._auth_failure_count >= 3:
-                _LOGGER.warning(
-                    "Multiple auth failures (%d), clearing tokens for fresh start",
-                    self._auth_failure_count,
-                )
-                self._session.clear_tokens()
 
             raise UpdateFailed(f"{type(err).__name__}: {err}") from err
 
@@ -434,7 +482,7 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Skipping sign-in: ultracard.io asked us to wait %.0f s", wait)
             self._raise_sign_in_blocked(wait)
 
-        _LOGGER.info("🔐 Authenticating with ultracard.io for user: %s", username)
+        _LOGGER.info("Signing in to ultracard.io")
         _LOGGER.debug("🔗 Auth URL: %s", url)
 
         for attempt in range(MAX_RETRIES):
@@ -459,8 +507,8 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                         self._last_error = BOT_CHALLENGE_MESSAGE
                         raise BotChallengeError(BOT_CHALLENGE_MESSAGE)
 
-                    # Retrying inside the window would restart ultracard.io's
-                    # sliding limit, so stop until Retry-After has passed.
+                    # Signing in again before Retry-After ends cannot succeed,
+                    # so stop until it has passed.
                     if response.status == 429:
                         wait = self._auth_state.block_sign_in(response.headers.get("Retry-After"))
                         _LOGGER.warning(
@@ -494,7 +542,6 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
 
                     # Parse response JSON
                     try:
-                        import json
                         data = json.loads(response_text)
                     except json.JSONDecodeError as e:
                         _LOGGER.error("❌ Failed to parse auth response: %s", e)
@@ -503,47 +550,14 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                             "request. This usually means a CDN, WAF, or security plugin "
                             "is intercepting /wp-json/ before WordPress."
                         )
-                        raise UpdateFailed(f"Invalid response from server: {e}")
+                        raise UpdateFailed(f"Invalid response from server: {e}") from e
                     
-                    # JWT Auth Pro response format
-                    # The token might be under different keys depending on version
-                    self._jwt_token = (
-                        data.get("token") or 
-                        data.get("data", {}).get("token") or
-                        data.get("jwt_token") or
-                        data.get("access_token")
-                    )
-                    
-                    # JWT Auth Pro provides refresh_token for token refresh
-                    self._refresh_token = (
-                        data.get("refresh_token") or
-                        data.get("data", {}).get("refresh_token")
-                    )
-                    
-                    if not self._jwt_token:
-                        _LOGGER.error("❌ No token in response: %s", data.keys())
+                    token, refresh, expires_at = parse_token_response(data)
+                    if not token:
+                        _LOGGER.error("No token in response: %s", list(data.keys()))
                         raise UpdateFailed("No token in authentication response")
-                    
-                    # Calculate token expiry - try multiple methods
-                    # 1. First try to parse the exp claim from the JWT itself (most accurate)
-                    jwt_exp = parse_jwt_expiry(self._jwt_token)
-                    if jwt_exp:
-                        self._token_expires_at = jwt_exp
-                        _LOGGER.debug("⏰ Token expiry from JWT: %s", self._token_expires_at)
-                    else:
-                        # 2. Check if API returned expires_in
-                        expires_in = (
-                            data.get("expires_in") or 
-                            data.get("data", {}).get("expires_in")
-                        )
-                        if expires_in:
-                            self._token_expires_at = int(time.time()) + int(expires_in)
-                            _LOGGER.debug("⏰ Token expiry from API expires_in: %s", self._token_expires_at)
-                        else:
-                            # 3. Default to configured days (match your JWT Auth Pro settings)
-                            self._token_expires_at = int(time.time()) + (DEFAULT_TOKEN_EXPIRY_DAYS * 24 * 60 * 60)
-                            _LOGGER.debug("⏰ Token expiry using default (%d days): %s", 
-                                         DEFAULT_TOKEN_EXPIRY_DAYS, self._token_expires_at)
+                    self._session.clear_tokens()
+                    self._session.set_tokens(token, refresh, expires_at)
 
                     # Log time until expiry in human-readable format
                     seconds_until_expiry = self._token_expires_at - int(time.time())
@@ -579,11 +593,22 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
             or f"Authentication with ultracard.io failed after {MAX_RETRIES} attempts"
         )
 
-    async def _refresh_jwt_token(self) -> None:
-        """Refresh JWT token using refresh token."""
+    async def _refresh_jwt_token(self, allow_sign_in: bool = True) -> None:
+        """Refresh JWT token using refresh token.
+
+        Falls back to one full sign-in when the refresh fails, unless
+        allow_sign_in is False (per-request callers must never sign in).
+        """
+
+        async def fallback(reason: str) -> None:
+            if allow_sign_in:
+                _LOGGER.warning("%s, signing in again", reason)
+                await self._authenticate()
+            else:
+                raise UpdateFailed(reason)
+
         if not self._refresh_token:
-            _LOGGER.warning("No refresh token available, re-authenticating")
-            await self._authenticate()
+            await fallback("No refresh token available")
             return
 
         url = f"{API_BASE_URL}{JWT_ENDPOINT}/token/refresh"
@@ -624,60 +649,29 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                     self._raise_sign_in_blocked(wait)
                 
                 if not (200 <= response.status < 300):
-                    _LOGGER.warning("⚠️ Token refresh failed with status %s, re-authenticating", response.status)
-                    await self._authenticate()
+                    if response.status in (401, 403):
+                        # The refresh token itself is dead; drop it.
+                        self._refresh_token = None
+                    await fallback(f"Token refresh failed with status {response.status}")
                     return
 
                 try:
-                    import json
                     data = json.loads(response_text)
                 except json.JSONDecodeError:
-                    _LOGGER.warning("⚠️ Invalid refresh response, re-authenticating")
-                    await self._authenticate()
+                    await fallback("Invalid token refresh response")
                     return
                 
-                # Extract new token from response
-                new_token = (
-                    data.get("token") or 
-                    data.get("data", {}).get("token") or
-                    data.get("jwt_token") or
-                    data.get("access_token")
-                )
-                
+                new_token, new_refresh, expires_at = parse_token_response(data)
                 if new_token:
-                    self._jwt_token = new_token
-                    
-                    # Update refresh token if provided
-                    new_refresh = (
-                        data.get("refresh_token") or
-                        data.get("data", {}).get("refresh_token")
-                    )
-                    if new_refresh:
-                        self._refresh_token = new_refresh
-                    
-                    # Calculate token expiry using JWT parsing first
-                    jwt_exp = parse_jwt_expiry(self._jwt_token)
-                    if jwt_exp:
-                        self._token_expires_at = jwt_exp
-                    else:
-                        expires_in = (
-                            data.get("expires_in") or 
-                            data.get("data", {}).get("expires_in")
-                        )
-                        if expires_in:
-                            self._token_expires_at = int(time.time()) + int(expires_in)
-                        else:
-                            self._token_expires_at = int(time.time()) + (DEFAULT_TOKEN_EXPIRY_DAYS * 24 * 60 * 60)
-
+                    # Keep the cached profile: same account, same session.
+                    self._session.set_tokens(new_token, new_refresh, expires_at)
                     self._last_error = None
-                    _LOGGER.debug("✅ Successfully refreshed JWT token")
+                    _LOGGER.debug("Refreshed JWT token")
                 else:
-                    _LOGGER.warning("⚠️ No token in refresh response, re-authenticating")
-                    await self._authenticate()
+                    await fallback("No token in refresh response")
 
         except aiohttp.ClientError as err:
-            _LOGGER.warning("⚠️ Error refreshing token, re-authenticating: %s", err)
-            await self._authenticate()
+            await fallback(f"Error refreshing token: {err}")
 
     async def _fetch_user_profile(self) -> dict[str, Any]:
         """Fetch user profile data from WordPress."""
@@ -709,16 +703,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                     
                     # Handle token expiration/revocation (JWT Auth Pro auto-revoke feature)
                     if response.status == 401 or response.status == 403:
-                        _LOGGER.warning(
-                            "Token rejected (status %s), clearing and will re-auth",
-                            response.status,
-                        )
-                        self._jwt_token = None
-                        self._refresh_token = None
-                        await self._async_request_reauth(
-                            f"Token expired or revoked (HTTP {response.status})"
-                        )
-                        raise UpdateFailed(f"Token expired or revoked: {response.status}")
+                        if _is_bot_challenge(response, response_text):
+                            self._last_error = BOT_CHALLENGE_MESSAGE
+                            raise BotChallengeError(BOT_CHALLENGE_MESSAGE)
+                        raise TokenRejected(f"Profile request refused the token: {response.status}")
                     
                     if not (200 <= response.status < 300):
                         _LOGGER.error("❌ Failed to fetch user profile: %s - %s", response.status, response_text[:200])
@@ -728,11 +716,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                         raise UpdateFailed(f"Failed to fetch user profile: {response.status}")
 
                     try:
-                        import json
                         data = json.loads(response_text)
                     except json.JSONDecodeError as e:
                         _LOGGER.error("❌ Failed to parse user profile response: %s", e)
-                        raise UpdateFailed(f"Invalid user profile response: {e}")
+                        raise UpdateFailed(f"Invalid user profile response: {e}") from e
                     
                     _LOGGER.debug("✅ User profile data received")
                     return data
@@ -775,13 +762,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                     
                     # Handle token expiration/revocation
                     if response.status == 401 or response.status == 403:
-                        _LOGGER.warning("Token rejected during subscription fetch")
-                        self._jwt_token = None
-                        self._refresh_token = None
-                        await self._async_request_reauth(
-                            f"Token expired or revoked (HTTP {response.status})"
-                        )
-                        raise UpdateFailed(f"Token expired or revoked: {response.status}")
+                        if _is_bot_challenge(response, response_text):
+                            self._last_error = BOT_CHALLENGE_MESSAGE
+                            raise BotChallengeError(BOT_CHALLENGE_MESSAGE)
+                        raise TokenRejected(f"Subscription request refused the token: {response.status}")
                     
                     if not (200 <= response.status < 300):
                         _LOGGER.error("❌ Failed to fetch subscription: %s - %s", response.status, response_text[:200])
@@ -791,11 +775,10 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
                         raise UpdateFailed(f"Failed to fetch subscription: {response.status}")
 
                     try:
-                        import json
                         data = json.loads(response_text)
                     except json.JSONDecodeError as e:
                         _LOGGER.error("❌ Failed to parse subscription response: %s", e)
-                        raise UpdateFailed(f"Invalid subscription response: {e}")
+                        raise UpdateFailed(f"Invalid subscription response: {e}") from e
                     
                     _LOGGER.debug("✅ Subscription data received")
                     return data
@@ -925,7 +908,6 @@ class UltraCardProCloudCoordinator(DataUpdateCoordinator):
 
         return {
             "authenticated": bool(data.get("authenticated")),
-            "username": data.get("username"),
             "email_redacted": redacted_email,
             "subscription_tier": subscription.get("tier") or data.get("subscription_tier"),
             "subscription_status": subscription.get("status") or data.get("subscription_status"),

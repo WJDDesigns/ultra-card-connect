@@ -1,8 +1,9 @@
 """Config flow for Ultra Card Pro Cloud integration."""
 from __future__ import annotations
 
-import logging
 import asyncio
+import json
+import logging
 from typing import Any
 
 import aiohttp
@@ -21,6 +22,8 @@ from homeassistant.helpers.selector import (
 )
 
 from .auth_state import get_auth_state
+from .bot_challenge import is_bot_challenge
+from .jwt_utils import parse_token_response
 from .const import (
     DOMAIN,
     API_BASE_URL,
@@ -29,6 +32,7 @@ from .const import (
     ERROR_CANNOT_CONNECT,
     ERROR_RATE_LIMITED,
     ERROR_UNKNOWN,
+    ERROR_BOT_CHALLENGE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,7 +40,6 @@ _LOGGER = logging.getLogger(__name__)
 # Constants for retry logic
 MAX_RETRIES = 2  # Reduced from 3 to minimize traffic on failures
 RETRY_DELAY = 2  # seconds
-RATE_LIMIT_DELAY = 5  # seconds
 
 # Connection settings (match coordinator.py)
 USER_AGENT = "HomeAssistant/UltraCardProCloud/1.0"
@@ -53,6 +56,7 @@ STEP_MENU_SCHEMA = vol.Schema(
                     SelectOptionDict(value="setup_without_account", label="Set up without an account (sign in later in the sidebar)"),
                 ],
                 mode=SelectSelectorMode.LIST,
+                translation_key="next_step",
             )
         ),
     }
@@ -83,7 +87,11 @@ def _get_headers() -> dict[str, str]:
 async def validate_auth(
     hass: HomeAssistant, username: str, password: str
 ) -> dict[str, Any]:
-    """Validate the user credentials."""
+    """Validate the user credentials with a single /token call.
+
+    The issued tokens are stashed in the shared AuthState so the entry that
+    uses these credentials picks them up instead of signing in a second time.
+    """
     session = async_get_clientsession(hass)
     url = f"{API_BASE_URL}{JWT_ENDPOINT}/token"
     auth_state = get_auth_state(hass.data.setdefault(DOMAIN, {}))
@@ -107,8 +115,14 @@ async def validate_auth(
                 # Never log the body here: a 2xx body contains the JWT.
                 _LOGGER.debug("📥 Auth response length: %d bytes", len(response_text))
 
-                # Retrying inside the window would restart ultracard.io's
-                # sliding limit; the block is shared with the coordinator.
+                # Challenge pages never reach WordPress: a 403 here is not a
+                # wrong password and retrying cannot succeed.
+                if is_bot_challenge(response, response_text):
+                    _LOGGER.warning("Sign-in blocked before reaching ultracard.io (HTTP %s)", response.status)
+                    raise BotChallenge
+
+                # Signing in again before Retry-After ends cannot succeed; the
+                # block is shared with the coordinator.
                 if response.status == 429:
                     wait = auth_state.block_sign_in(response.headers.get("Retry-After"))
                     _LOGGER.warning(
@@ -121,13 +135,6 @@ async def validate_auth(
                     _LOGGER.error("❌ Authentication failed: Invalid credentials (status %s)", response.status)
                     raise InvalidAuth
                 
-                # JWT Auth Pro may return 202 for async operations
-                if response.status == 202:
-                    _LOGGER.debug("⏳ Got 202 Accepted, retrying (attempt %d/%d)", 
-                                 attempt + 1, MAX_RETRIES)
-                    await asyncio.sleep(2)
-                    continue
-
                 # Accept any 2xx status as success
                 if not (200 <= response.status < 300):
                     _LOGGER.error("❌ Authentication failed with status: %s - %s", 
@@ -141,25 +148,19 @@ async def validate_auth(
 
                 # Parse the response
                 try:
-                    import json
                     data = json.loads(response_text)
                 except json.JSONDecodeError as e:
                     _LOGGER.error("❌ Failed to parse auth response: %s", e)
                     raise CannotConnect from e
                 
                 # JWT Auth Pro response format - check for token in various locations
-                token = (
-                    data.get("token") or 
-                    data.get("data", {}).get("token") or
-                    data.get("jwt_token") or
-                    data.get("access_token")
-                )
-                
+                token, refresh, expires_at = parse_token_response(data)
                 if not token:
                     _LOGGER.error("❌ No token in response. Keys: %s", list(data.keys()))
                     raise InvalidAuth
 
-                _LOGGER.debug("✅ Credentials validated for user: %s", username)
+                auth_state.stash_tokens(username, token, refresh, expires_at)
+                _LOGGER.debug("Credentials validated")
                 
                 return {
                     "user_id": data.get("user_id") or data.get("data", {}).get("user_id"),
@@ -197,7 +198,7 @@ async def validate_auth(
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(RETRY_DELAY * (attempt + 1))
                 continue
-            raise CannotConnect
+            raise CannotConnect from None
         except asyncio.CancelledError:
             # Don't catch CancelledError - let it propagate for proper task cancellation
             _LOGGER.debug("Request cancelled (HA shutting down or task cancelled)")
@@ -217,7 +218,7 @@ async def validate_auth(
                 await asyncio.sleep(RETRY_DELAY * (attempt + 1))
                 continue
             raise CannotConnect from err
-        except (InvalidAuth, CannotConnect, RateLimited):
+        except (InvalidAuth, CannotConnect, RateLimited, BotChallenge):
             raise
         except Exception as err:
             _LOGGER.exception("❌ Unexpected error during authentication (%s): %s", type(err).__name__, err)
@@ -279,7 +280,7 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 _LOGGER.debug("Creating config entry for user: %s", info["username"])
                 return self.async_create_entry(
-                    title=f"Ultra Card ({info['username']})",
+                    title=_entry_title(info["username"]),
                     data=user_input,
                 )
 
@@ -288,6 +289,8 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = ERROR_INVALID_AUTH
             except RateLimited:
                 errors["base"] = ERROR_RATE_LIMITED
+            except BotChallenge:
+                errors["base"] = ERROR_BOT_CHALLENGE
             except CannotConnect:
                 _LOGGER.warning("Cannot connect to ultracard.io")
                 errors["base"] = ERROR_CANNOT_CONNECT
@@ -327,6 +330,8 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except RateLimited:
             _LOGGER.warning("API-initiated sign-in held back: ultracard.io is rate-limiting")
             return self.async_abort(reason=ERROR_RATE_LIMITED)
+        except BotChallenge:
+            return self.async_abort(reason=ERROR_BOT_CHALLENGE)
         except CannotConnect:
             _LOGGER.warning("API-initiated sign-in failed: cannot reach ultracard.io")
             return self.async_abort(reason="cannot_connect")
@@ -335,7 +340,7 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
 
         return self.async_create_entry(
-            title=f"Ultra Card ({info.get('username', username)})",
+            title=_entry_title(info.get("username", username)),
             data={CONF_USERNAME: username, CONF_PASSWORD: password},
         )
 
@@ -346,48 +351,71 @@ class UltraCardProCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle reauth confirmation."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            try:
-                await validate_auth(
-                    self.hass,
-                    user_input[CONF_USERNAME],
-                    user_input[CONF_PASSWORD],
-                )
-
-                entry = self.hass.config_entries.async_get_entry(
-                    self.context["entry_id"]
-                )
-                if entry:
-                    # Users may sign in with either username or email, and the
-                    # Hub's own sign-in never touches unique_id, so the account
-                    # is not pinned here; merge so unrelated entry data survives.
-                    self.hass.config_entries.async_update_entry(
-                        entry, data={**entry.data, **user_input}
-                    )
-                    await self.hass.config_entries.async_reload(entry.entry_id)
-                    _LOGGER.debug("✅ Re-authentication successful")
-                    return self.async_abort(reason="reauth_successful")
-
-            except InvalidAuth:
-                _LOGGER.warning("⚠️ Invalid credentials during re-auth")
-                errors["base"] = ERROR_INVALID_AUTH
-            except RateLimited:
-                errors["base"] = ERROR_RATE_LIMITED
-            except CannotConnect:
-                _LOGGER.warning("⚠️ Cannot connect to ultracard.io during re-auth")
-                errors["base"] = ERROR_CANNOT_CONNECT
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("❌ Unexpected exception during re-auth")
-                errors["base"] = ERROR_UNKNOWN
+        """Ask for the current ultracard.io login, prefilled with the stored username."""
+        entry = self._get_reauth_entry()
+        errors = await self._async_try_credentials(user_input) if user_input else {}
+        if user_input is not None and not errors:
+            # Users may sign in with either username or email, so the account
+            # is not pinned to unique_id; merge so unrelated entry data survives.
+            return self.async_update_reload_and_abort(
+                entry,
+                title=_entry_title(user_input[CONF_USERNAME]),
+                data={**entry.data, **user_input},
+            )
 
         return self.async_show_form(
             step_id="reauth_confirm",
-            data_schema=STEP_USER_DATA_SCHEMA,
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_USER_DATA_SCHEMA,
+                {CONF_USERNAME: (user_input or entry.data).get(CONF_USERNAME, "")},
+            ),
             errors=errors,
         )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Change the ultracard.io account without removing the integration."""
+        entry = self._get_reconfigure_entry()
+        errors = await self._async_try_credentials(user_input) if user_input else {}
+        if user_input is not None and not errors:
+            return self.async_update_reload_and_abort(
+                entry,
+                title=_entry_title(user_input[CONF_USERNAME]),
+                data={**entry.data, **user_input},
+            )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_USER_DATA_SCHEMA,
+                {CONF_USERNAME: (user_input or entry.data).get(CONF_USERNAME, "")},
+            ),
+            errors=errors,
+        )
+
+    async def _async_try_credentials(self, user_input: dict[str, Any]) -> dict[str, str]:
+        """Validate credentials and return form errors (empty when they work)."""
+        try:
+            await validate_auth(
+                self.hass, user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
+            )
+        except InvalidAuth:
+            return {"base": ERROR_INVALID_AUTH}
+        except RateLimited:
+            return {"base": ERROR_RATE_LIMITED}
+        except BotChallenge:
+            return {"base": ERROR_BOT_CHALLENGE}
+        except CannotConnect:
+            return {"base": ERROR_CANNOT_CONNECT}
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected exception while checking credentials")
+            return {"base": ERROR_UNKNOWN}
+        return {}
+
+
+def _entry_title(username: str) -> str:
+    return f"Ultra Card ({username})"
 
 
 class CannotConnect(Exception):
@@ -400,3 +428,7 @@ class InvalidAuth(Exception):
 
 class RateLimited(Exception):
     """Error to indicate ultracard.io is refusing sign-ins from this network for now."""
+
+
+class BotChallenge(Exception):
+    """Error to indicate edge bot protection blocked the request before WordPress."""

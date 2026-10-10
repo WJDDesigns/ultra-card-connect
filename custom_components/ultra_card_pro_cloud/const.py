@@ -8,7 +8,9 @@ JWT_ENDPOINT = "/jwt-auth/v1"
 SUBSCRIPTION_ENDPOINT = "/ultra-card/v1/subscription"
 
 # Update intervals
-TOKEN_REFRESH_INTERVAL = 3300  # 55 minutes (refresh before 1 hour expiry)
+# How often the coordinator polls /subscription. The JWT has its own expiry and
+# is refreshed 5 minutes before it, independently of this interval.
+POLL_INTERVAL_SECONDS = 3300  # 55 minutes
 
 # Proxy hardening — only these API paths may be forwarded with the shared JWT
 PROXY_ALLOWED_METHODS = frozenset({"GET", "POST", "PUT", "DELETE"})
@@ -36,6 +38,7 @@ ERROR_INVALID_AUTH = "invalid_auth"
 ERROR_CANNOT_CONNECT = "cannot_connect"
 ERROR_RATE_LIMITED = "rate_limited"
 ERROR_UNKNOWN = "unknown"
+ERROR_BOT_CHALLENGE = "bot_challenge"
 
 # Panel (Ultra Card Hub sidebar)
 # Served directly from this integration's www/ folder — no dependency on the

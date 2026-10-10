@@ -3,4 +3,4 @@ Ultra Card Pro Cloud Integration Version
 This is the single source of truth for version information.
 """
 
-__version__ = "1.8.2"
+__version__ = "1.9.0"

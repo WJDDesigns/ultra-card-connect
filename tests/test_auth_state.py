@@ -75,3 +75,43 @@ def test_parse_retry_after_falls_back_on_garbage() -> None:
 def test_sign_in_wait_message_rounds_up_to_minutes() -> None:
     assert "about 10 minutes" in auth_state.sign_in_wait_message(570)
     assert "about 1 minute." in auth_state.sign_in_wait_message(20)
+
+
+def test_stashed_tokens_are_adopted_by_the_matching_entry() -> None:
+    state = auth_state.AuthState()
+    state.stash_tokens("Wayne", "jwt", "refresh", 123)
+
+    session = state.session_for("entry-1", "wayne")
+
+    assert (session.jwt_token, session.refresh_token, session.token_expires_at) == ("jwt", "refresh", 123)
+    assert state.pending == {}
+
+
+def test_stashed_tokens_for_another_account_are_left_alone() -> None:
+    state = auth_state.AuthState()
+    state.stash_tokens("someone-else", "jwt", "refresh", 123)
+
+    session = state.session_for("entry-1", "wayne")
+
+    assert session.jwt_token is None
+    assert "someone-else" in state.pending
+
+
+def test_profile_is_cached_until_it_is_a_day_old_or_tokens_are_cleared() -> None:
+    session = auth_state.AuthSession(username="wayne")
+    assert session.profile_is_stale(NOW)
+
+    session.store_profile({"id": 1}, NOW)
+    assert not session.profile_is_stale(NOW + 3600)
+    assert session.profile_is_stale(NOW + auth_state.PROFILE_MAX_AGE_SECONDS + 1)
+
+    session.clear_tokens()
+    assert session.profile_is_stale(NOW)
+
+
+def test_refresh_keeps_the_old_refresh_token_when_none_is_returned() -> None:
+    session = auth_state.AuthSession(username="wayne")
+    session.set_tokens("jwt-1", "refresh-1", 1)
+    session.set_tokens("jwt-2", None, 2)
+
+    assert (session.jwt_token, session.refresh_token) == ("jwt-2", "refresh-1")

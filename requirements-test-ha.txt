@@ -1,0 +1,3 @@
+# Tests under tests/ha run against a real Home Assistant core.
+-r requirements-dev.txt
+pytest-homeassistant-custom-component

@@ -15,10 +15,13 @@ from typing import Any
 
 DATA_AUTH_STATE = "auth_state"
 
-# ultracard.io answers a sign-in 429 with `Retry-After: 600`. Its window slides,
-# so any sign-in attempted before it ends keeps the install locked out.
+# ultracard.io answers a sign-in 429 with `Retry-After: 600`. The window is fixed
+# and refused attempts are not counted, but signing in again before it ends is
+# pointless, so every sign-in path waits out the full Retry-After.
 SIGN_IN_BLOCK_DEFAULT_SECONDS = 600
 SIGN_IN_BLOCK_MAX_SECONDS = 3600
+
+PROFILE_MAX_AGE_SECONDS = 24 * 3600
 
 
 def parse_retry_after(raw: str | None, default: float, now: float | None = None) -> float:
@@ -46,11 +49,33 @@ class AuthSession:
     jwt_token: str | None = None
     refresh_token: str | None = None
     token_expires_at: int = 0
+    # users/me?context=edit costs ~1 s of PHP, so the profile is cached here and
+    # only re-read after a fresh sign-in or once it is PROFILE_MAX_AGE_SECONDS old.
+    profile: dict[str, Any] | None = None
+    profile_fetched_at: float = 0.0
+    # First successful poll for this account; survives token refreshes.
+    connected_at: str | None = None
 
     def clear_tokens(self) -> None:
         self.jwt_token = None
         self.refresh_token = None
         self.token_expires_at = 0
+        self.profile = None
+        self.profile_fetched_at = 0.0
+
+    def set_tokens(self, jwt_token: str, refresh_token: str | None, expires_at: int) -> None:
+        self.jwt_token = jwt_token
+        if refresh_token:
+            self.refresh_token = refresh_token
+        self.token_expires_at = expires_at
+
+    def profile_is_stale(self, now: float | None = None) -> bool:
+        now = time.time() if now is None else now
+        return self.profile is None or now - self.profile_fetched_at > PROFILE_MAX_AGE_SECONDS
+
+    def store_profile(self, profile: dict[str, Any], now: float | None = None) -> None:
+        self.profile = profile
+        self.profile_fetched_at = time.time() if now is None else now
 
 
 @dataclass
@@ -63,6 +88,10 @@ class AuthState:
 
     sessions: dict[str, AuthSession] = field(default_factory=dict)
     sign_in_blocked_until: float = 0.0
+    # Tokens from a credential check (config flow, reauth, Hub sign-in) that no
+    # entry has picked up yet, keyed by lower-cased username. Without this the
+    # first refresh after setup signs in a second time.
+    pending: dict[str, AuthSession] = field(default_factory=dict)
 
     def session_for(self, entry_id: str, username: str | None) -> AuthSession:
         """Return the entry's session, discarding tokens issued to another account."""
@@ -71,8 +100,29 @@ class AuthState:
             session = self.sessions[entry_id] = AuthSession(username=username)
         elif session.username != username:
             session.clear_tokens()
+            session.connected_at = None
             session.username = username
+        self.adopt_pending(session)
         return session
+
+    def stash_tokens(
+        self, username: str, jwt_token: str, refresh_token: str | None, expires_at: int
+    ) -> None:
+        """Keep tokens from a credential check for the entry that will use them."""
+        pending = AuthSession(username=username)
+        pending.set_tokens(jwt_token, refresh_token, expires_at)
+        self.pending[username.lower()] = pending
+
+    def adopt_pending(self, session: AuthSession) -> bool:
+        """Move stashed tokens for the session's account onto it. Returns True if any."""
+        if not session.username:
+            return False
+        pending = self.pending.pop(session.username.lower(), None)
+        if pending is None or not pending.jwt_token:
+            return False
+        session.clear_tokens()
+        session.set_tokens(pending.jwt_token, pending.refresh_token, pending.token_expires_at)
+        return True
 
     def drop(self, entry_id: str) -> None:
         self.sessions.pop(entry_id, None)
