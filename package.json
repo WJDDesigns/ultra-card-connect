@@ -1,6 +1,6 @@
 {
   "name": "ultra-card-pro-cloud",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Home Assistant integration for Ultra Card Connect — sidebar and Pro authentication",
   "main": "deploy.js",
   "scripts": {

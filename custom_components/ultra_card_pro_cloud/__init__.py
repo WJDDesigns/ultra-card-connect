@@ -42,6 +42,19 @@ from .const import (
 from .bot_challenge import BOT_CHALLENGE_MESSAGE, is_bot_challenge
 from .config_flow import BotChallenge, CannotConnect, InvalidAuth, RateLimited, validate_auth
 from .coordinator import USER_AGENT, UltraCardProCloudCoordinator
+from .linked_rows import (
+    LINKED_ROWS_STORAGE_KEY,
+    LINKED_ROWS_STORAGE_VERSION,
+    MAX_LINKED_ROWS,
+    MAX_REQUEST_BYTES,
+    MAX_ROW_BYTES,
+    LinkedRowError,
+    delete_row as linked_rows_delete,
+    get_row as linked_rows_get,
+    list_row_summaries as linked_rows_summaries,
+    parse_request_body as linked_rows_parse_body,
+    upsert_row as linked_rows_upsert,
+)
 from .helpers import (
     build_local_smart_preset,
     build_smart_tier_access,
@@ -718,6 +731,115 @@ class UltraCardThemeSettingsView(HomeAssistantView):
         return self.json({"success": True, "global_theme": theme})
 
 
+# Shared "Linked Row" blocks (instance-wide, shared by every Ultra Card on this HA)
+# Serialises read-modify-write of the linked rows store so two saves cannot
+# both pass the revision check against the same stored version.
+_LINKED_ROWS_LOCK_KEY = f"{DOMAIN}_linked_rows_lock"
+
+
+def _linked_rows_lock(hass: HomeAssistant) -> asyncio.Lock:
+    """Return the per-instance lock guarding the linked rows store."""
+    lock = hass.data.get(_LINKED_ROWS_LOCK_KEY)
+    if lock is None:
+        lock = hass.data[_LINKED_ROWS_LOCK_KEY] = asyncio.Lock()
+    return lock
+
+
+class UltraCardLinkedRowsView(HomeAssistantView):
+    """GET/POST/DELETE /api/ultra_card_pro_cloud/linked_rows — shared Linked Rows.
+
+    Ultra Card's Linked Row module stores one shared block of modules here so
+    that editing it once updates it on every dashboard, device and user. Reads
+    are open to any signed-in HA user (every dashboard needs them); writes are
+    limited to admins, like saving a dashboard.
+
+    Writes carry ``base_revision``; a stale one is refused with 409 and the
+    current row so the card can refresh instead of overwriting newer work.
+    """
+
+    url = "/api/ultra_card_pro_cloud/linked_rows"
+    name = "api:ultra_card_pro_cloud:linked_rows"
+    requires_auth = True
+
+    async def get(self, request: web.Request) -> web.Response:
+        """``?id=`` returns one row (``row`` is null when it is not stored);
+        without it, the library as summaries without modules."""
+        hass: HomeAssistant = request.app["hass"]
+        store = Store(hass, LINKED_ROWS_STORAGE_VERSION, LINKED_ROWS_STORAGE_KEY)
+        data = await store.async_load()
+        row_id = request.query.get("id")
+        if row_id is not None:
+            try:
+                return self.json({"row": linked_rows_get(data, row_id)})
+            except LinkedRowError as err:
+                return self.json(err.as_response(), status_code=err.status)
+        return self.json(
+            {
+                "rows": linked_rows_summaries(data),
+                "limits": {"max_rows": MAX_LINKED_ROWS, "max_row_bytes": MAX_ROW_BYTES},
+            }
+        )
+
+    async def post(self, request: web.Request) -> web.Response:
+        """Create or update one linked row."""
+        hass: HomeAssistant = request.app["hass"]
+        if not _request_can_manage_shared_auth(request):
+            return self.json(
+                {"error": "Only Home Assistant admins can change linked rows."},
+                status_code=403,
+            )
+        if request.content_length is not None and request.content_length > MAX_REQUEST_BYTES:
+            return self.json(
+                {"error": f"Linked row is too large (max {MAX_ROW_BYTES // 1024} KB)"},
+                status_code=413,
+            )
+        try:
+            # content_length is absent on chunked uploads, so check what arrived too.
+            body = linked_rows_parse_body(await request.read())
+        except LinkedRowError as err:
+            return self.json(err.as_response(), status_code=err.status)
+
+        now = datetime.now(timezone.utc).isoformat()
+        user_id = _request_hass_user_id(request)
+        async with _linked_rows_lock(hass):
+            store = Store(hass, LINKED_ROWS_STORAGE_VERSION, LINKED_ROWS_STORAGE_KEY)
+            data = await store.async_load()
+            try:
+                new_data, row = linked_rows_upsert(data, body, now=now, user_id=user_id)
+            except LinkedRowError as err:
+                return self.json(err.as_response(), status_code=err.status)
+            await store.async_save(new_data)
+        return self.json({"success": True, "row": row})
+
+    async def delete(self, request: web.Request) -> web.Response:
+        """Delete one linked row (``?id=``; optional ``&revision=`` guard)."""
+        hass: HomeAssistant = request.app["hass"]
+        if not _request_can_manage_shared_auth(request):
+            return self.json(
+                {"error": "Only Home Assistant admins can change linked rows."},
+                status_code=403,
+            )
+        row_id = request.query.get("id")
+        expected: int | None = None
+        raw_revision = request.query.get("revision")
+        if raw_revision not in (None, ""):
+            try:
+                expected = int(raw_revision)
+            except ValueError:
+                return self.json({"error": "revision must be an integer"}, status_code=400)
+
+        async with _linked_rows_lock(hass):
+            store = Store(hass, LINKED_ROWS_STORAGE_VERSION, LINKED_ROWS_STORAGE_KEY)
+            data = await store.async_load()
+            try:
+                new_data, deleted = linked_rows_delete(data, row_id, expected_revision=expected)
+            except LinkedRowError as err:
+                return self.json(err.as_response(), status_code=err.status)
+            if deleted:
+                await store.async_save(new_data)
+        return self.json({"success": True, "deleted": deleted})
+
+
 class UltraCardProxyView(HomeAssistantView):
     """POST /api/ultra_card_pro_cloud/proxy — forward API calls to ultracard.io with integration token.
 
@@ -1199,6 +1321,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(UltraCardRegisterView())
     hass.http.register_view(UltraCardFavoriteColorsView())
     hass.http.register_view(UltraCardThemeSettingsView())
+    hass.http.register_view(UltraCardLinkedRowsView())
     hass.http.register_view(UltraCardProxyView())
     hass.http.register_view(UltraCardSmartConnectorsStatusView())
     hass.http.register_view(UltraCardSmartGenerateView())
