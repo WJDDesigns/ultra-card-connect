@@ -102,6 +102,39 @@ def list_rows(data: Any) -> list[dict[str, Any]]:
     return [public_row(r) for r in sorted(rows, key=lambda r: (r["name"].lower(), r["id"]))]
 
 
+def row_summary(row: dict[str, Any]) -> dict[str, Any]:
+    """A row without its modules, for the editor's library picker."""
+    summary = public_row(row)
+    summary["module_count"] = len(summary.pop("modules"))
+    return summary
+
+
+def list_row_summaries(data: Any) -> list[dict[str, Any]]:
+    """Every stored row without modules, sorted like :func:`list_rows`.
+
+    The library can hold up to ``MAX_TOTAL_BYTES``; the picker only needs names,
+    so listing never ships every row's modules to the browser.
+    """
+    return [row_summary(r) for r in list_rows(data)]
+
+
+def get_row(data: Any, row_id: Any) -> dict[str, Any] | None:
+    """One stored row by id (``None`` when it is not in the library)."""
+    row_id = validate_row_id(row_id)
+    row = normalize_store(data)["rows"].get(row_id)
+    return public_row(row) if row is not None else None
+
+
+def parse_request_body(raw: bytes) -> Any:
+    """Decode a write request body, refusing oversized or malformed JSON."""
+    if len(raw) > MAX_REQUEST_BYTES:
+        raise LinkedRowError(413, f"Linked row is too large (max {MAX_ROW_BYTES // 1024} KB)")
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as err:
+        raise LinkedRowError(400, "Invalid JSON") from err
+
+
 def validate_row_id(value: Any) -> str:
     """Return a valid row id or raise a 400."""
     if not isinstance(value, str) or not _ID_PATTERN.match(value):

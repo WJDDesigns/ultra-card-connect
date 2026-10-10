@@ -50,7 +50,9 @@ from .linked_rows import (
     MAX_ROW_BYTES,
     LinkedRowError,
     delete_row as linked_rows_delete,
-    list_rows as linked_rows_list,
+    get_row as linked_rows_get,
+    list_row_summaries as linked_rows_summaries,
+    parse_request_body as linked_rows_parse_body,
     upsert_row as linked_rows_upsert,
 )
 from .helpers import (
@@ -760,13 +762,20 @@ class UltraCardLinkedRowsView(HomeAssistantView):
     requires_auth = True
 
     async def get(self, request: web.Request) -> web.Response:
-        """Return every stored linked row."""
+        """``?id=`` returns one row (``row`` is null when it is not stored);
+        without it, the library as summaries without modules."""
         hass: HomeAssistant = request.app["hass"]
         store = Store(hass, LINKED_ROWS_STORAGE_VERSION, LINKED_ROWS_STORAGE_KEY)
         data = await store.async_load()
+        row_id = request.query.get("id")
+        if row_id is not None:
+            try:
+                return self.json({"row": linked_rows_get(data, row_id)})
+            except LinkedRowError as err:
+                return self.json(err.as_response(), status_code=err.status)
         return self.json(
             {
-                "rows": linked_rows_list(data),
+                "rows": linked_rows_summaries(data),
                 "limits": {"max_rows": MAX_LINKED_ROWS, "max_row_bytes": MAX_ROW_BYTES},
             }
         )
@@ -785,9 +794,10 @@ class UltraCardLinkedRowsView(HomeAssistantView):
                 status_code=413,
             )
         try:
-            body = await request.json()
-        except Exception:
-            return self.json({"error": "Invalid JSON"}, status_code=400)
+            # content_length is absent on chunked uploads, so check what arrived too.
+            body = linked_rows_parse_body(await request.read())
+        except LinkedRowError as err:
+            return self.json(err.as_response(), status_code=err.status)
 
         now = datetime.now(timezone.utc).isoformat()
         user_id = _request_hass_user_id(request)

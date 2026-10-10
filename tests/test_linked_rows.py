@@ -197,3 +197,33 @@ def test_inputs_are_not_mutated() -> None:
     )
     linked_rows.delete_row(data, "lr_kitchen")
     assert repr(data) == snapshot
+
+
+def test_get_row_returns_one_row_or_none() -> None:
+    data, row = _create()
+    assert linked_rows.get_row(data, "lr_kitchen") == row
+    assert linked_rows.get_row(data, "lr_missing") is None
+    assert linked_rows.get_row(None, "lr_missing") is None
+    with pytest.raises(linked_rows.LinkedRowError) as excinfo:
+        linked_rows.get_row(data, "../etc")
+    assert excinfo.value.status == 400
+
+
+def test_summaries_leave_out_modules() -> None:
+    data, _ = _create()
+    (summary,) = linked_rows.list_row_summaries(data)
+    assert "modules" not in summary
+    assert summary["module_count"] == 1
+    assert summary["revision"] == 1
+    assert summary["name"] == "Kitchen"
+
+
+def test_parse_request_body() -> None:
+    assert linked_rows.parse_request_body(b'{"id": "lr_a"}') == {"id": "lr_a"}
+    for raw in (b"not json", b"\xff\xfe"):
+        with pytest.raises(linked_rows.LinkedRowError) as excinfo:
+            linked_rows.parse_request_body(raw)
+        assert excinfo.value.status == 400
+    with pytest.raises(linked_rows.LinkedRowError) as excinfo:
+        linked_rows.parse_request_body(b" " * (linked_rows.MAX_REQUEST_BYTES + 1))
+    assert excinfo.value.status == 413

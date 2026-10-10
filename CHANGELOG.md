@@ -6,7 +6,7 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ### 🚀 New Features
 
-- **Linked rows for Ultra Card's Linked Row module** - A new endpoint, `/api/ultra_card_pro_cloud/linked_rows`, stores shared blocks of Ultra Card modules in Home Assistant so that editing a Linked Row once updates it on every dashboard, device and user. Any signed-in user can read them; only admins can create, change or delete them, the same as saving a dashboard. Each row has a revision number, so a save based on an old copy is refused (HTTP 409 with the current row) instead of overwriting newer work. Rows are limited to 256 KB each and 200 in total. The status sensor's `capabilities` now include `linked_rows`.
+- **Linked rows for Ultra Card's Linked Row module** - A new endpoint, `/api/ultra_card_pro_cloud/linked_rows`, stores shared blocks of Ultra Card modules in Home Assistant so that editing a Linked Row once updates it on every dashboard, device and user. Any signed-in user can read them; only admins can create, change or delete them, the same as saving a dashboard. Each row has a revision number, so a save based on an old copy is refused (HTTP 409 with the current row) instead of overwriting newer work. `GET ?id=` returns one row; the plain `GET` lists the library without modules so dashboards never download every row. Rows are limited to 256 KB each and 200 in total. The status sensor's `capabilities` now include `linked_rows`.
 
 ## [1.9.0] - 2026-10-10
 
