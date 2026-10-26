@@ -4,6 +4,17 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-26
+
+Brings the bundled Hub up to Ultra Card 3.14.2, released today. The Hub was still on 3.13.3, so this also brings the Hub changes from 3.14.0 and 3.14.1. Nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant.
+
+### 🔧 Improvements
+
+- **Updated the bundled Hub to Ultra Card 3.14.2** - The Hub's Variables tab gets entity search (the Entity field searches by entity ID or name as you type) and groups for global variables, with filter chips to show one group at a time
+- **Lighter on ultracard.io** - From Ultra Card 3.14.1: the Hub's Account tab reuses billing details for 10 minutes and the themes catalog for an hour instead of asking ultracard.io every time
+
 ## [1.10.0] - 2026-10-10
 
 Adds storage for Ultra Card's new Linked Row module (Ultra Card 3.14.0-beta2 and later). The bundled Hub stays on Ultra Card 3.13.3.
