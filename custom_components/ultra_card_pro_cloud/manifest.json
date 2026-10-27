@@ -1,6 +1,9 @@
 {
   "domain": "ultra_card_pro_cloud",
   "name": "Ultra Card Connect",
+  "categories": [
+    "computers_network.cloud_developer_tools"
+  ],
   "codeowners": [
     "@WJDDesigns"
   ],
@@ -15,5 +18,5 @@
   "issue_tracker": "https://github.com/WJDDesigns/ultra-card-connect/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "1.11.0"
+  "version": "1.11.1"
 }

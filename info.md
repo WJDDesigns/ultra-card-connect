@@ -12,7 +12,7 @@
 
 ## Setup (30 seconds)
 
-1. Click **"Download"** in HACS
+1. Click **"Download"** in the Marketplace (Home Assistant 2026.11+) or HACS
 2. Restart Home Assistant
 3. Go to **Settings → Devices & Services → Add Integration**
 4. Search for **"Ultra Card Connect"**
@@ -23,7 +23,7 @@
 
 - Home Assistant 2024.11.0 or newer
 - A [ultracard.io](https://ultracard.io) account (free or Pro)
-- Ultra Card installed via HACS
+- Ultra Card installed from the Marketplace or HACS
 
 ## Support
 
