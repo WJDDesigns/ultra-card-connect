@@ -1,9 +1,6 @@
 {
   "domain": "ultra_card_pro_cloud",
   "name": "Ultra Card Connect",
-  "categories": [
-    "computers_network.cloud_developer_tools"
-  ],
   "codeowners": [
     "@WJDDesigns"
   ],

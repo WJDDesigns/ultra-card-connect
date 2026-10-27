@@ -12,7 +12,6 @@ Ready for the Home Assistant Marketplace, which replaces HACS in Home Assistant 
 
 ### 🔧 Improvements
 
-- **Listed under a Marketplace category** - Connect now names its category (Cloud & developer tools), so it shows up when people browse the Marketplace by category
 - **Marketplace install link** - The README has a one-click "Open in Marketplace" button for Home Assistant 2026.11 and newer, next to the HACS button for older versions
 
 ## [1.11.0] - 2026-10-26
