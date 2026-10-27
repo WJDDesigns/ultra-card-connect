@@ -4,6 +4,16 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-10-27
+
+Ready for the Home Assistant Marketplace, which replaces HACS in Home Assistant 2026.11. Nothing changes in how Connect works, and there is nothing to reconfigure. Existing HACS installs move to the Marketplace on their own when you update Home Assistant.
+
+**After updating:** restart Home Assistant.
+
+### 🔧 Improvements
+
+- **Marketplace install link** - The README has a one-click "Open in Marketplace" button for Home Assistant 2026.11 and newer, next to the HACS button for older versions
+
 ## [1.11.0] - 2026-10-26
 
 Brings the bundled Hub up to Ultra Card 3.14.2, released today. The Hub was still on 3.13.3, so this also brings the Hub changes from 3.14.0 and 3.14.1. Nothing needs to be reconfigured.

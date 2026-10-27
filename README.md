@@ -1,6 +1,6 @@
 # Ultra Card Connect
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/release/WJDDesigns/ultra-card-connect.svg)](https://github.com/WJDDesigns/ultra-card-connect/releases)
 
 > **Required for all Ultra Card users.** Install once to get the Ultra Card Hub sidebar in Home Assistant. Pro subscribers also get their subscription synced automatically across every device.
@@ -57,13 +57,21 @@ Install Ultra Card Connect once and:
 
 ---
 
-## 🚀 Quick Install via HACS
+## 🚀 Quick Install
 
-Open your Home Assistant and add this repository in HACS:
+Ultra Card Connect is in the Home Assistant Marketplace (built into Home Assistant 2026.11 and newer) and in HACS (Home Assistant 2026.10 and older).
+
+**Home Assistant 2026.11 and newer (Marketplace):**
+
+[![Open your Home Assistant instance and open a repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=WJDDesigns&repository=ultra-card-connect&category=integration)
+
+Or go to **Settings → Marketplace**, search for **"Ultra Card Connect"**, click **Download**, then restart Home Assistant.
+
+**Home Assistant 2026.10 and older (HACS):**
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=WJDDesigns&repository=ultra-card-connect&category=integration)
 
-**Or search manually in HACS:**
+Or search manually in HACS:
 
 1. Open **HACS** in Home Assistant
 2. Click **Integrations**
@@ -160,9 +168,9 @@ The **Ultra Card Hub** (sidebar panel) is **served by this integration**, not by
 
 For the sidebar panel and favorite colors to match the changelog, **update this integration** when a new version is released.
 
-### Automatic Updates via HACS
+### Automatic Updates
 
-Once installed via HACS, you'll be notified of updates automatically. Click **Update** when available — no reinstall or reconfiguration needed.
+Once installed from the Marketplace or HACS, you'll be notified of updates automatically. Click **Update** when available — no reinstall or reconfiguration needed.
 
 ### Reauthentication
 
