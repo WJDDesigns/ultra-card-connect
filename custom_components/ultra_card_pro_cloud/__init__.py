@@ -60,6 +60,11 @@ from .helpers import (
     build_smart_tier_access,
     extract_conversation_text,
     extract_user_colors,
+    FEED_MAX_BYTES,
+    FEED_MAX_REDIRECTS,
+    FEED_TIMEOUT_SECONDS,
+    feed_url_problem,
+    is_private_address,
     normalize_smart_connector_preference,
     normalize_proxy_payload,
     safe_upload_filename,
@@ -944,6 +949,84 @@ class UltraCardProxyView(HomeAssistantView):
         return self.json({"error": "Method not allowed", "_status": 405, "_body": None}, status_code=405)
 
 
+class UltraCardFeedView(HomeAssistantView):
+    """GET /api/ultra_card_pro_cloud/feed?url=… — fetch an RSS/Atom/JSON feed for the RSS Feed module.
+
+    Most news sites don't allow browsers on other sites to read their feeds
+    (CORS), so the card asks Home Assistant to fetch it. Any signed-in user may
+    use it for public addresses; addresses on the local network are only
+    allowed for admins, so this can't be used to look around the LAN.
+    Upstream results always come back as 200 JSON {ok, status, content_type, body}.
+    """
+
+    url = "/api/ultra_card_pro_cloud/feed"
+    name = "api:ultra_card_pro_cloud:feed"
+    requires_auth = True
+
+    async def _host_is_private(self, host: str, port: int) -> bool:
+        loop = asyncio.get_running_loop()
+        try:
+            infos = await loop.getaddrinfo(host, port)
+        except OSError:
+            return False  # let the fetch report the DNS error
+        return any(is_private_address(str(info[4][0])) for info in infos)
+
+    async def get(self, request: web.Request) -> web.Response:
+        from urllib.parse import urljoin, urlsplit
+
+        hass: HomeAssistant = request.app["hass"]
+        url = (request.query.get("url") or "").strip()
+        allow_private = _request_can_manage_shared_auth(request)
+        session = async_get_clientsession(hass)
+        headers = {
+            "User-Agent": f"{USER_AGENT} (RSS Feed module)",
+            "Accept": "application/rss+xml, application/atom+xml, application/feed+json, application/xml, text/xml, application/json;q=0.9, */*;q=0.5",
+        }
+
+        for _ in range(FEED_MAX_REDIRECTS + 1):
+            problem = feed_url_problem(url)
+            if problem:
+                return self.json({"ok": False, "error": problem}, status_code=400)
+            parts = urlsplit(url)
+            port = parts.port or (443 if parts.scheme == "https" else 80)
+            if not allow_private and await self._host_is_private(parts.hostname or "", port):
+                return self.json({"ok": False, "error": "private_address"}, status_code=403)
+            try:
+                async with session.get(
+                    url,
+                    headers=headers,
+                    allow_redirects=False,
+                    timeout=aiohttp_timeout(FEED_TIMEOUT_SECONDS),
+                ) as resp:
+                    if resp.status in (301, 302, 303, 307, 308) and resp.headers.get("Location"):
+                        url = urljoin(url, resp.headers["Location"])
+                        continue
+                    content_type = resp.headers.get("Content-Type", "")
+                    if resp.status >= 400:
+                        return self.json(
+                            {"ok": False, "status": resp.status, "content_type": content_type, "body": ""}
+                        )
+                    raw = await resp.content.read(FEED_MAX_BYTES + 1)
+                    if len(raw) > FEED_MAX_BYTES:
+                        return self.json({"ok": False, "status": 413, "content_type": content_type, "body": ""})
+                    match = re.search(r"charset=([\w.-]+)", content_type, re.IGNORECASE)
+                    charset = match.group(1) if match else "utf-8"
+                    try:
+                        text = raw.decode(charset, errors="replace")
+                    except LookupError:
+                        text = raw.decode("utf-8", errors="replace")
+                    return self.json(
+                        {"ok": True, "status": resp.status, "content_type": content_type, "body": text}
+                    )
+            except asyncio.TimeoutError:
+                return self.json({"ok": False, "status": 504, "content_type": "", "body": ""})
+            except Exception as err:  # noqa: BLE001 — report any fetch failure to the card
+                _LOGGER.debug("RSS feed fetch failed for %s: %s", url, err)
+                return self.json({"ok": False, "status": 502, "content_type": "", "body": ""})
+
+        return self.json({"ok": False, "status": 310, "content_type": "", "body": ""})
+
+
 class UltraCardSmartConnectorsStatusView(HomeAssistantView):
     """GET /api/ultra_card_pro_cloud/smart/connectors/status."""
 
@@ -1323,6 +1406,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.http.register_view(UltraCardThemeSettingsView())
     hass.http.register_view(UltraCardLinkedRowsView())
     hass.http.register_view(UltraCardProxyView())
+    hass.http.register_view(UltraCardFeedView())
     hass.http.register_view(UltraCardSmartConnectorsStatusView())
     hass.http.register_view(UltraCardSmartGenerateView())
     hass.http.register_view(UltraCardMediaUploadView())
