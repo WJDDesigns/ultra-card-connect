@@ -62,7 +62,9 @@ from .helpers import (
     extract_user_colors,
     FEED_MAX_BYTES,
     FEED_MAX_REDIRECTS,
+    FEED_REQUEST_HEADERS,
     FEED_TIMEOUT_SECONDS,
+    decode_feed_bytes,
     feed_url_problem,
     is_private_address,
     normalize_smart_connector_preference,
@@ -978,10 +980,7 @@ class UltraCardFeedView(HomeAssistantView):
         url = (request.query.get("url") or "").strip()
         allow_private = _request_can_manage_shared_auth(request)
         session = async_get_clientsession(hass)
-        headers = {
-            "User-Agent": f"{USER_AGENT} (RSS Feed module)",
-            "Accept": "application/rss+xml, application/atom+xml, application/feed+json, application/xml, text/xml, application/json;q=0.9, */*;q=0.5",
-        }
+        headers = FEED_REQUEST_HEADERS
 
         for _ in range(FEED_MAX_REDIRECTS + 1):
             problem = feed_url_problem(url)
@@ -1009,12 +1008,7 @@ class UltraCardFeedView(HomeAssistantView):
                     raw = await resp.content.read(FEED_MAX_BYTES + 1)
                     if len(raw) > FEED_MAX_BYTES:
                         return self.json({"ok": False, "status": 413, "content_type": content_type, "body": ""})
-                    match = re.search(r"charset=([\w.-]+)", content_type, re.IGNORECASE)
-                    charset = match.group(1) if match else "utf-8"
-                    try:
-                        text = raw.decode(charset, errors="replace")
-                    except LookupError:
-                        text = raw.decode("utf-8", errors="replace")
+                    text = decode_feed_bytes(raw, content_type)
                     return self.json(
                         {"ok": True, "status": resp.status, "content_type": content_type, "body": text}
                     )

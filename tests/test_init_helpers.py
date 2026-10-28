@@ -106,3 +106,14 @@ def test_is_private_address() -> None:
     assert helpers.is_private_address("not-an-ip")
     assert not helpers.is_private_address("93.184.216.34")
     assert not helpers.is_private_address("2606:2800:220:1:248:1893:25c8:1946")
+
+
+def test_decode_feed_bytes() -> None:
+    latin = '<?xml version="1.0" encoding="ISO-8859-1"?><rss><title>Gr\u00fc\u00dfe</title></rss>'.encode("latin-1")
+    assert "Grüße" in helpers.decode_feed_bytes(latin, "application/rss+xml")
+    assert "Grüße" in helpers.decode_feed_bytes(latin, "text/xml; charset=iso-8859-1")
+    utf = "<rss><title>Grüße</title></rss>".encode("utf-8")
+    assert "Grüße" in helpers.decode_feed_bytes(utf, "application/rss+xml; charset=UTF-8")
+    assert "Grüße" in helpers.decode_feed_bytes(b"\xef\xbb\xbf" + utf, "")
+    assert "Grüße" in helpers.decode_feed_bytes(utf, "text/xml; charset=bogus-charset")
+    assert "Mozilla/5.0" in helpers.FEED_REQUEST_HEADERS["User-Agent"]
