@@ -4,6 +4,20 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-28
+
+Adds feed loading for Ultra Card's new free RSS Feed module (Ultra Card 3.14.3-beta2 and later), and brings the bundled Hub up to Ultra Card 3.14.3-beta2. Nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant.
+
+### 🚀 New Features
+
+- **Feed loading for the RSS Feed module** - Home Assistant fetches RSS, Atom and JSON feeds for the card, so feeds from sites that block being loaded straight from a dashboard work. Any signed-in user can load public feeds; feeds on your own network are limited to admins
+
+### 🔧 Improvements
+
+- **Updated the bundled Hub to Ultra Card 3.14.3-beta2** - The Hub now matches the latest Ultra Card beta
+
 ## [1.11.1] - 2026-10-27
 
 Ready for the Home Assistant Marketplace, which replaces HACS in Home Assistant 2026.11. Nothing changes in how Connect works, and there is nothing to reconfigure. Existing HACS installs move to the Marketplace on their own when you update Home Assistant.
