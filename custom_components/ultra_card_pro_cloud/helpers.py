@@ -241,3 +241,53 @@ def build_smart_tier_access(
         "free_daily_generations": free_daily_generations,
         "free_remaining": free_remaining,
     }
+
+
+# ── RSS Feed module: server-side feed fetch ─────────────────────────────────
+
+FEED_MAX_BYTES = 2 * 1024 * 1024
+FEED_TIMEOUT_SECONDS = 15
+FEED_MAX_REDIRECTS = 3
+
+
+def feed_url_problem(url: str) -> str | None:
+    """Why a feed URL can't be fetched, or None when its shape is fine.
+
+    Only plain http(s) URLs without credentials or odd ports are allowed.
+    Whether the host is private is checked separately once it is resolved.
+    """
+    from urllib.parse import urlsplit
+
+    value = (url or "").strip()
+    if not value or len(value) > 2048:
+        return "missing_url"
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return "invalid_url"
+    if parts.scheme not in ("http", "https"):
+        return "invalid_scheme"
+    if not parts.hostname:
+        return "invalid_url"
+    if parts.username or parts.password:
+        return "credentials_in_url"
+    try:
+        port = parts.port
+    except ValueError:
+        return "invalid_url"
+    if port is not None and port not in (80, 443, 8080, 8443):
+        return "invalid_port"
+    return None
+
+
+def is_private_address(address: str) -> bool:
+    """True for loopback, private, link-local and other non-public IPs."""
+    import ipaddress
+
+    try:
+        ip = ipaddress.ip_address(address.split("%", 1)[0])
+    except ValueError:
+        return True
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+        ip = ip.ipv4_mapped
+    return not ip.is_global or ip.is_multicast

@@ -84,3 +84,25 @@ def test_build_smart_tier_access_contract_shape() -> None:
     assert access["is_pro_user"] is False
     assert access["free_daily_generations"] == 5
     assert access["free_remaining"] == 1
+
+
+def test_feed_url_problem() -> None:
+    assert helpers.feed_url_problem("https://example.com/feed.xml") is None
+    assert helpers.feed_url_problem("http://example.com:8080/rss") is None
+    assert helpers.feed_url_problem("") == "missing_url"
+    assert helpers.feed_url_problem("file:///etc/passwd") == "invalid_scheme"
+    assert helpers.feed_url_problem("ftp://example.com/feed") == "invalid_scheme"
+    assert helpers.feed_url_problem("https://user:pw@example.com/feed") == "credentials_in_url"
+    assert helpers.feed_url_problem("https://example.com:22/feed") == "invalid_port"
+
+
+def test_is_private_address() -> None:
+    assert helpers.is_private_address("127.0.0.1")
+    assert helpers.is_private_address("192.168.4.55")
+    assert helpers.is_private_address("10.0.0.1")
+    assert helpers.is_private_address("169.254.169.254")
+    assert helpers.is_private_address("::1")
+    assert helpers.is_private_address("::ffff:192.168.1.1")
+    assert helpers.is_private_address("not-an-ip")
+    assert not helpers.is_private_address("93.184.216.34")
+    assert not helpers.is_private_address("2606:2800:220:1:248:1893:25c8:1946")
