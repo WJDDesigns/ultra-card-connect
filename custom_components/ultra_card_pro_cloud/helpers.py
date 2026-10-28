@@ -247,7 +247,43 @@ def build_smart_tier_access(
 
 FEED_MAX_BYTES = 2 * 1024 * 1024
 FEED_TIMEOUT_SECONDS = 15
-FEED_MAX_REDIRECTS = 3
+FEED_MAX_REDIRECTS = 5
+
+# Several news sites (Focus, FAZ, Zeit, heise…) turn away requests that don't
+# look like a browser, so feeds are fetched with a normal browser identity.
+FEED_REQUEST_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "application/rss+xml, application/atom+xml, application/feed+json, "
+        "application/xml;q=0.9, text/xml;q=0.9, application/json;q=0.8, */*;q=0.5"
+    ),
+    "Accept-Language": "en-US,en;q=0.8,de;q=0.6,*;q=0.5",
+}
+
+
+def decode_feed_bytes(raw: bytes, content_type: str) -> str:
+    """Decode a feed using the charset from the header, else the XML declaration.
+
+    Many German and older feeds are ISO-8859-1 and only say so in
+    <?xml … encoding="…"?>; decoding them as UTF-8 garbles umlauts.
+    """
+    charset = None
+    match = re.search(r"charset=[\"']?([\w.:-]+)", content_type or "", re.IGNORECASE)
+    if match:
+        charset = match.group(1)
+    elif raw.startswith(b"\xef\xbb\xbf"):
+        charset = "utf-8-sig"
+    else:
+        decl = re.match(rb"\s*<\?xml[^>]*encoding=[\"']([\w.:-]+)[\"']", raw[:200])
+        if decl:
+            charset = decl.group(1).decode("ascii", errors="ignore")
+    try:
+        return raw.decode(charset or "utf-8", errors="replace")
+    except LookupError:
+        return raw.decode("utf-8", errors="replace")
 
 
 def feed_url_problem(url: str) -> str | None:
