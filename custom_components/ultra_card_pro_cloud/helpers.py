@@ -263,6 +263,26 @@ FEED_REQUEST_HEADERS = {
     "Accept-Language": "en-US,en;q=0.8,de;q=0.6,*;q=0.5",
 }
 
+# Tried in turn when a site answers "blocked" (401/403/406/429/503) to the
+# profile before. Some CDNs reject a Chrome user agent that lacks the headers a
+# real Chrome sends; others only let known feed readers through.
+FEED_FALLBACK_HEADERS = (
+    {
+        **FEED_REQUEST_HEADERS,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    },
+    {
+        "User-Agent": "Mozilla/5.0 (compatible; UltraCardFeedReader/1.0; +https://ultracard.io)",
+        "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+    },
+)
+FEED_BLOCKED_STATUSES = frozenset({401, 403, 406, 429, 503})
+
 
 def decode_feed_bytes(raw: bytes, content_type: str) -> str:
     """Decode a feed using the charset from the header, else the XML declaration.

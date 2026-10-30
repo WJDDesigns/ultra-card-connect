@@ -67,3 +67,15 @@ async def test_redirect_to_private_address_is_blocked(
     aioclient_mock.get(FEED_URL, status=302, headers={"Location": "http://127.0.0.1/secret"})
     user = await hass_client(hass_read_only_access_token)
     assert (await user.get(URL, params={"url": FEED_URL})).status == 403
+
+
+async def test_blocked_feed_is_retried_with_other_identities(
+    hass, view, hass_client, aioclient_mock
+) -> None:
+    aioclient_mock.get(FEED_URL, status=403, text="blocked")
+    client = await hass_client()
+    data = await (await client.get(URL, params={"url": FEED_URL})).json()
+    assert data["ok"] is False
+    assert data["status"] == 403
+    # Default browser identity, then each fallback identity once.
+    assert aioclient_mock.call_count == 3
