@@ -60,6 +60,8 @@ from .helpers import (
     build_smart_tier_access,
     extract_conversation_text,
     extract_user_colors,
+    FEED_BLOCKED_STATUSES,
+    FEED_FALLBACK_HEADERS,
     FEED_MAX_BYTES,
     FEED_MAX_REDIRECTS,
     FEED_REQUEST_HEADERS,
@@ -980,9 +982,11 @@ class UltraCardFeedView(HomeAssistantView):
         url = (request.query.get("url") or "").strip()
         allow_private = _request_can_manage_shared_auth(request)
         session = async_get_clientsession(hass)
-        headers = FEED_REQUEST_HEADERS
+        profiles = (FEED_REQUEST_HEADERS, *FEED_FALLBACK_HEADERS)
+        profile = 0
 
-        for _ in range(FEED_MAX_REDIRECTS + 1):
+        for _ in range(FEED_MAX_REDIRECTS + len(profiles)):
+            headers = profiles[profile]
             problem = feed_url_problem(url)
             if problem:
                 return self.json({"ok": False, "error": problem}, status_code=400)
@@ -1001,6 +1005,10 @@ class UltraCardFeedView(HomeAssistantView):
                         url = urljoin(url, resp.headers["Location"])
                         continue
                     content_type = resp.headers.get("Content-Type", "")
+                    if resp.status in FEED_BLOCKED_STATUSES and profile + 1 < len(profiles):
+                        # The site turned this request away; try the next identity.
+                        profile += 1
+                        continue
                     if resp.status >= 400:
                         return self.json(
                             {"ok": False, "status": resp.status, "content_type": content_type, "body": ""}
