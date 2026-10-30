@@ -307,7 +307,7 @@ export const __webpack_esm_ids__=[9970];export const __webpack_esm_modules__={63
           ${a.K.render(t,{tap_action:l.tap_action||{action:"nothing"},hold_action:l.hold_action||{action:"nothing"},double_tap_action:l.double_tap_action||{action:"nothing"}},e=>{const t={};e.tap_action&&(t.tap_action=e.tap_action),e.hold_action&&(t.hold_action=e.hold_action),e.double_tap_action&&(t.double_tap_action=e.double_tap_action),o(t)},"Link Configuration")}
         </div>
       </div>
-    `}renderSplitPreview(e,t){return this.renderPreview(e,t,{type:"ultra-card",layout:{rows:[]}},"live")}renderPreview(e,t,i,r){var a,s,d,m,w,b,y,f,_,x,S,z,A,k,I,C,F,E;const T=e,L=(0,l.oD)(),P=u.I.getEffectiveDesign(T.design,u.I.getCurrentBreakpoint()),q=T,N=[];let R=[];for(const e of T.modules)"pagebreak"!==e.type?R.push(e):R.length>0&&(N.push([...R]),R=[]);if(R.length>0?N.push([...R]):0===N.length&&N.push([]),0===N.length||1===N.length&&0===N[0].length)return n.qy`
+    `}renderSplitPreview(e,t){return this.renderPreview(e,t,{type:"ultra-card",layout:{rows:[]}},"live")}renderPreview(e,t,i,r){var a,s,d,m,w,b,y,f,_,x,S,z,A,k,I,C,F,E;const T=e,L=(0,l.oD)(),P=u.Ij.getEffectiveDesign(T.design,u.Ij.getCurrentBreakpoint()),q=T,N=[];let R=[];for(const e of T.modules)"pagebreak"!==e.type?R.push(e):R.length>0&&(N.push([...R]),R=[]);if(R.length>0?N.push([...R]):0===N.length&&N.push([]),0===N.length||1===N.length&&0===N[0].length)return n.qy`
         <div style="padding: 40px 20px; text-align: center; color: var(--secondary-text-color);">
           <ha-icon
             icon="mdi:view-carousel"

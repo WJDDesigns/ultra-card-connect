@@ -1,4 +1,4 @@
-export const __webpack_esm_ids__=[7861];export const __webpack_esm_modules__={2562(e,t,o){o.d(t,{UltraAccordionModule:()=>u});var i=o(2618),n=o(3307),r=o(1091),a=o(8414),d=o(230),l=o(378),c=o(2034),s=o(6478),g=o(5064);class u extends n.m{constructor(){super(...arguments),this.metadata={type:"accordion",title:"Accordion",description:"Collapsible container with customizable header for organizing modules",author:"WJD Designs",version:"1.0.0",icon:"mdi:chevron-down",category:"layout",tags:["layout","accordion","collapsible","container","organization"]},this.accordionStates=new Map,this.accordionLogicStates=new Map,this.accordionInitConfigs=new Map,this.accordionResolvedDirections=new Map,this.outsideClickCleanups=new Map}createDefault(e,t){return{id:e||this.generateId("accordion"),type:"accordion",modules:[],title_mode:"custom",title_text:"Accordion Title",title_entity:"",show_entity_name:!1,icon:"mdi:chevron-down",header_alignment:"apart",icon_side:"right",default_open:!1,expand_direction:"down",expand_style:"push",close_on_outside_click:!1,open_mode:"manual",open_conditions:[],tap_action:{action:"nothing"},hold_action:{action:"nothing"},double_tap_action:{action:"nothing"},display_mode:"always",display_conditions:[]}}renderDesignTab(e,t,o,n){var r;const a=(null===(r=null==t?void 0:t.locale)||void 0===r?void 0:r.language)||"en";return i.qy`
+export const __webpack_esm_ids__=[7861];export const __webpack_esm_modules__={2562(e,t,o){o.d(t,{UltraAccordionModule:()=>p});var i=o(2618),n=o(3307),r=o(1091),a=o(8414),d=o(230),l=o(378),c=o(2034),s=o(6478),g=o(5064);class p extends n.m{constructor(){super(...arguments),this.metadata={type:"accordion",title:"Accordion",description:"Collapsible container with customizable header for organizing modules",author:"WJD Designs",version:"1.0.0",icon:"mdi:chevron-down",category:"layout",tags:["layout","accordion","collapsible","container","organization"]},this.accordionStates=new Map,this.accordionLogicStates=new Map,this.accordionInitConfigs=new Map,this.accordionResolvedDirections=new Map,this.outsideClickCleanups=new Map}createDefault(e,t){return{id:e||this.generateId("accordion"),type:"accordion",modules:[],title_mode:"custom",title_text:"Accordion Title",title_entity:"",show_entity_name:!1,icon:"mdi:chevron-down",header_alignment:"apart",icon_side:"right",default_open:!1,expand_direction:"down",expand_style:"push",close_on_outside_click:!1,open_mode:"manual",open_conditions:[],tap_action:{action:"nothing"},hold_action:{action:"nothing"},double_tap_action:{action:"nothing"},display_mode:"always",display_conditions:[]}}renderDesignTab(e,t,o,n){var r;const a=(null===(r=null==t?void 0:t.locale)||void 0===r?void 0:r.language)||"en";return i.qy`
       ${this.injectUcFormStyles()}
 
       <div class="module-design-settings">
@@ -10,7 +10,7 @@ export const __webpack_esm_ids__=[7861];export const __webpack_esm_modules__={25
         </div>
         ${super.renderDesignTab(e,t,o,n)}
       </div>
-    `}renderGeneralTab(e,t,o,n){var r,a,d,l,c,g,u;const p=e,_=(null===(r=null==t?void 0:t.locale)||void 0===r?void 0:r.language)||"en",h=p.design||{};return i.qy`
+    `}renderGeneralTab(e,t,o,n){var r,a,d,l,c,g,p;const u=e,_=(null===(r=null==t?void 0:t.locale)||void 0===r?void 0:r.language)||"en",h=u.design||{};return i.qy`
       ${this.injectUcFormStyles()}
       <style>
         .color-row {
@@ -60,32 +60,36 @@ export const __webpack_esm_ids__=[7861];export const __webpack_esm_modules__={25
 
       <div class="module-general-settings">
         <!-- Title Configuration Section -->
-        ${this.renderSettingsSection((0,s.kg)("editor.accordion.title.section_title",_,"Title Configuration"),(0,s.kg)("editor.accordion.title.section_desc",_,"Configure the accordion header title source and content."),[{title:(0,s.kg)("editor.accordion.title.mode",_,"Title Mode"),description:(0,s.kg)("editor.accordion.title.mode_desc",_,"Choose whether to use custom text or entity state as title."),hass:t,data:{title_mode:p.title_mode||"custom"},schema:[this.selectField("title_mode",[{value:"custom",label:(0,s.kg)("editor.common.custom_text",_,"Custom Text")},{value:"entity",label:(0,s.kg)("editor.common.entity_state",_,"Entity State")}])],onChange:e=>{e.detail.value.title_mode!==(p.title_mode||"custom")&&(n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50))}}])}
+        ${this.renderSettingsSection((0,s.kg)("editor.accordion.title.section_title",_,"Title Configuration"),(0,s.kg)("editor.accordion.title.section_desc",_,"Configure the accordion header title source and content."),[{title:(0,s.kg)("editor.accordion.title.mode",_,"Title Mode"),description:(0,s.kg)("editor.accordion.title.mode_desc",_,"Choose whether to use custom text or entity state as title."),hass:t,data:{title_mode:u.title_mode||"custom"},schema:[this.selectField("title_mode",[{value:"custom",label:(0,s.kg)("editor.common.custom_text",_,"Custom Text")},{value:"entity",label:(0,s.kg)("editor.common.entity_state",_,"Entity State")}])],onChange:e=>{e.detail.value.title_mode!==(u.title_mode||"custom")&&(n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50))}}])}
 
         <!-- Conditional: Custom Title Text -->
-        ${"custom"===p.title_mode?i.qy`
+        ${"custom"===u.title_mode?i.qy`
               <div style="margin-top: -16px; margin-bottom: 32px;">
-                ${this.renderConditionalFieldsGroup((0,s.kg)("editor.accordion.title.custom_config",_,"Custom Title Configuration"),this.renderFieldSection((0,s.kg)("editor.accordion.title.custom_text",_,"Title Text"),(0,s.kg)("editor.accordion.title.custom_text_desc",_,"Enter the custom text to display in the accordion header."),t,{title_text:p.title_text||""},[this.textField("title_text")],e=>{n({title_text:e.detail.value.title_text}),this.triggerPreviewUpdate()}))}
+                ${this.renderConditionalFieldsGroup((0,s.kg)("editor.accordion.title.custom_config",_,"Custom Title Configuration"),this.renderFieldSection((0,s.kg)("editor.accordion.title.custom_text",_,"Title Text"),(0,s.kg)("editor.accordion.title.custom_text_desc",_,"Enter the custom text to display in the accordion header."),t,{title_text:u.title_text||""},[this.textField("title_text")],e=>{n({title_text:e.detail.value.title_text}),this.triggerPreviewUpdate()}))}
               </div>
             `:""}
 
         <!-- Conditional: Entity Title -->
-        ${"entity"===p.title_mode?i.qy`
+        ${"entity"===u.title_mode?i.qy`
               <div style="margin-top: -16px; margin-bottom: 32px;">
                 ${this.renderConditionalFieldsGroup((0,s.kg)("editor.accordion.title.entity_config",_,"Entity Title Configuration"),i.qy`
-                    ${this.renderEntityPickerWithVariables(t,o,"title_entity",p.title_entity||"",e=>{n({title_entity:e}),setTimeout(()=>{this.triggerPreviewUpdate()},50)},void 0,(0,s.kg)("editor.accordion.title.entity",_,"Title Entity"))}
+                    ${this.renderEntityPickerWithVariables(t,o,"title_entity",u.title_entity||"",e=>{n({title_entity:e}),setTimeout(()=>{this.triggerPreviewUpdate()},50)},void 0,(0,s.kg)("editor.accordion.title.entity",_,"Title Entity"))}
                     <div class="field-description" style="font-size: 13px !important; font-weight: 400 !important; margin-top: 4px; color: var(--secondary-text-color);">
                       ${(0,s.kg)("editor.accordion.title.entity_desc",_,"Select an entity whose state will be used as the accordion header title.")}
                     </div>
 
                     <!-- Show Entity Name Toggle -->
-                    ${this.renderSettingsSection((0,s.kg)("editor.accordion.title.show_name",_,"Display Options"),(0,s.kg)("editor.accordion.title.show_name_desc",_,"Choose whether to show the entity name along with the state."),[{title:(0,s.kg)("editor.accordion.title.show_entity_name",_,"Show Entity Name"),description:(0,s.kg)("editor.accordion.title.show_entity_name_desc",_,"Display the entity friendly name before the state value."),hass:t,data:{show_entity_name:p.show_entity_name||!1},schema:[this.booleanField("show_entity_name")],onChange:e=>{n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}])}
+                    ${this.renderSettingsSection((0,s.kg)("editor.accordion.title.show_name",_,"Display Options"),(0,s.kg)("editor.accordion.title.show_name_desc",_,"Choose whether to show the entity name along with the state."),[{title:(0,s.kg)("editor.accordion.title.show_entity_name",_,"Show Entity Name"),description:(0,s.kg)("editor.accordion.title.show_entity_name_desc",_,"Display the entity friendly name before the state value."),hass:t,data:{show_entity_name:u.show_entity_name||!1},schema:[this.booleanField("show_entity_name")],onChange:e=>{n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}])}
                   `)}
               </div>
             `:""}
 
+        <!-- Title Icon (shown before the title text) -->
+        ${this.renderSettingsSection((0,s.kg)("editor.accordion.title_icon.section_title",_,"Title Icon"),(0,s.kg)("editor.accordion.title_icon.section_desc",_,"Optional icon shown in front of the title. Leave empty for none."),[{title:(0,s.kg)("editor.accordion.title_icon.icon",_,"Icon"),description:"",hass:t,data:{title_icon:u.title_icon||""},schema:[this.iconField("title_icon")],onChange:e=>{var t;n({title_icon:(null===(t=e.detail.value)||void 0===t?void 0:t.title_icon)||""}),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}])}
+        ${u.title_icon?this.renderColorField((0,s.kg)("editor.accordion.title_icon.color",_,"Title icon color"),"",t,u.title_icon_color||"","",e=>{n({title_icon_color:e}),setTimeout(()=>this.triggerPreviewUpdate(),50)}):""}
+
         <!-- Icon Configuration Section -->
-        ${this.renderSettingsSection((0,s.kg)("editor.accordion.icon.section_title",_,"Control Icon"),(0,s.kg)("editor.accordion.icon.section_desc",_,"Configure the control icon displayed in the accordion header (defaults to chevron-down)."),[{title:(0,s.kg)("editor.accordion.icon.custom",_,"Icon"),description:(0,s.kg)("editor.accordion.icon.custom_desc",_,"Select the icon to display as the control indicator."),hass:t,data:{icon:p.icon||"mdi:chevron-down"},schema:[this.iconField("icon")],onChange:e=>{n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}])}
+        ${this.renderSettingsSection((0,s.kg)("editor.accordion.icon.section_title",_,"Control Icon"),(0,s.kg)("editor.accordion.icon.section_desc",_,"Configure the control icon displayed in the accordion header (defaults to chevron-down)."),[{title:(0,s.kg)("editor.accordion.icon.custom",_,"Icon"),description:(0,s.kg)("editor.accordion.icon.custom_desc",_,"Select the icon to display as the control indicator."),hass:t,data:{icon:u.icon||"mdi:chevron-down"},schema:[this.iconField("icon")],onChange:e=>{n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}])}
 
         <!-- Header Alignment Section -->
         <div
@@ -105,10 +109,10 @@ export const __webpack_esm_ids__=[7861];export const __webpack_esm_modules__={25
           </div>
 
           <!-- Alignment Mode: Center or Apart -->
-          ${this.renderSegmentedField((0,s.kg)("editor.accordion.alignment.mode",_,"Alignment Mode"),"",p.header_alignment||"apart",[{value:"center",label:(0,s.kg)("editor.common.center",_,"Center"),icon:"mdi:align-horizontal-center"},{value:"apart",label:(0,s.kg)("editor.common.apart",_,"Apart"),icon:"mdi:arrow-left-right"}],e=>{n({header_alignment:e}),this.triggerPreviewUpdate()})}
+          ${this.renderSegmentedField((0,s.kg)("editor.accordion.alignment.mode",_,"Alignment Mode"),"",u.header_alignment||"apart",[{value:"center",label:(0,s.kg)("editor.common.center",_,"Center"),icon:"mdi:align-horizontal-center"},{value:"apart",label:(0,s.kg)("editor.common.apart",_,"Apart"),icon:"mdi:arrow-left-right"}],e=>{n({header_alignment:e}),this.triggerPreviewUpdate()})}
 
           <!-- Icon Side: Left or Right -->
-          ${this.renderSegmentedField((0,s.kg)("editor.accordion.alignment.icon_side",_,"Icon Side"),"",p.icon_side||"right",[{value:"left",label:(0,s.kg)("editor.common.left",_,"Left"),icon:"mdi:arrow-left"},{value:"right",label:(0,s.kg)("editor.common.right",_,"Right"),icon:"mdi:arrow-right"}],e=>{n({icon_side:e}),this.triggerPreviewUpdate()})}
+          ${this.renderSegmentedField((0,s.kg)("editor.accordion.alignment.icon_side",_,"Icon Side"),"",u.icon_side||"right",[{value:"left",label:(0,s.kg)("editor.common.left",_,"Left"),icon:"mdi:arrow-left"},{value:"right",label:(0,s.kg)("editor.common.right",_,"Right"),icon:"mdi:arrow-right"}],e=>{n({icon_side:e}),this.triggerPreviewUpdate()})}
         </div>
 
         <!-- Expand Behavior Section -->
@@ -129,20 +133,20 @@ export const __webpack_esm_ids__=[7861];export const __webpack_esm_modules__={25
           </div>
 
           <!-- Expand Direction -->
-          ${this.renderSegmentedField((0,s.kg)("editor.accordion.behavior.direction",_,"Expand Direction"),(0,s.kg)("editor.accordion.behavior.direction_desc",_,"Auto opens upward when the accordion sits in the lower half of the screen."),p.expand_direction||"down",[{value:"down",label:(0,s.kg)("editor.accordion.behavior.direction_down",_,"Down"),icon:"mdi:arrow-down"},{value:"up",label:(0,s.kg)("editor.accordion.behavior.direction_up",_,"Up"),icon:"mdi:arrow-up"},{value:"auto",label:(0,s.kg)("editor.accordion.behavior.direction_auto",_,"Auto"),icon:"mdi:arrow-up-down"}],e=>{n({expand_direction:e}),this.triggerPreviewUpdate()})}
+          ${this.renderSegmentedField((0,s.kg)("editor.accordion.behavior.direction",_,"Expand Direction"),(0,s.kg)("editor.accordion.behavior.direction_desc",_,"Auto opens upward when the accordion sits in the lower half of the screen."),u.expand_direction||"down",[{value:"down",label:(0,s.kg)("editor.accordion.behavior.direction_down",_,"Down"),icon:"mdi:arrow-down"},{value:"up",label:(0,s.kg)("editor.accordion.behavior.direction_up",_,"Up"),icon:"mdi:arrow-up"},{value:"auto",label:(0,s.kg)("editor.accordion.behavior.direction_auto",_,"Auto"),icon:"mdi:arrow-up-down"}],e=>{n({expand_direction:e}),this.triggerPreviewUpdate()})}
 
           <!-- Expand Style -->
-          ${this.renderSegmentedField((0,s.kg)("editor.accordion.behavior.style",_,"Expand Style"),(0,s.kg)("editor.accordion.behavior.style_desc",_,"In Place grows the accordion and pushes content aside. Overlay floats the open content over the page like a dropdown menu."),p.expand_style||"push",[{value:"push",label:(0,s.kg)("editor.accordion.behavior.style_push",_,"In Place"),icon:"mdi:arrow-expand-vertical"},{value:"overlay",label:(0,s.kg)("editor.accordion.behavior.style_overlay",_,"Overlay"),icon:"mdi:layers-outline"}],e=>{n({expand_style:e}),this.triggerPreviewUpdate()})}
+          ${this.renderSegmentedField((0,s.kg)("editor.accordion.behavior.style",_,"Expand Style"),(0,s.kg)("editor.accordion.behavior.style_desc",_,"In Place grows the accordion and pushes content aside. Overlay floats the open content over the page like a dropdown menu."),u.expand_style||"push",[{value:"push",label:(0,s.kg)("editor.accordion.behavior.style_push",_,"In Place"),icon:"mdi:arrow-expand-vertical"},{value:"overlay",label:(0,s.kg)("editor.accordion.behavior.style_overlay",_,"Overlay"),icon:"mdi:layers-outline"}],e=>{n({expand_style:e}),this.triggerPreviewUpdate()})}
 
           <!-- Close on Outside Click -->
-          ${this.renderSettingsSection("","",[{title:(0,s.kg)("editor.accordion.behavior.outside_click",_,"Close on Outside Click"),description:(0,s.kg)("editor.accordion.behavior.outside_click_desc",_,"Collapse the accordion whenever you click or tap anywhere outside it."),hass:t,data:{close_on_outside_click:p.close_on_outside_click||!1},schema:[this.booleanField("close_on_outside_click")],onChange:e=>{n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}])}
+          ${this.renderSettingsSection("","",[{title:(0,s.kg)("editor.accordion.behavior.outside_click",_,"Close on Outside Click"),description:(0,s.kg)("editor.accordion.behavior.outside_click_desc",_,"Collapse the accordion whenever you click or tap anywhere outside it."),hass:t,data:{close_on_outside_click:u.close_on_outside_click||!1},schema:[this.booleanField("close_on_outside_click")],onChange:e=>{n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}])}
         </div>
 
         <!-- Open/Close Logic Section -->
-        ${this._renderOpenCloseLogic(p,t,n)}
+        ${this._renderOpenCloseLogic(u,t,n)}
 
         <!-- Default State Section (only shown when open_mode is manual) -->
-        ${"manual"===(p.open_mode||"manual")?this.renderSettingsSection((0,s.kg)("editor.accordion.state.section_title",_,"Default State"),(0,s.kg)("editor.accordion.state.section_desc",_,"Configure whether this accordion starts open or closed when the card loads."),[{title:(0,s.kg)("editor.accordion.state.default_open",_,"Open by Default"),description:(0,s.kg)("editor.accordion.state.default_open_desc",_,"When enabled, the accordion will be expanded when the card initially loads."),hass:t,data:{default_open:p.default_open||!1},schema:[this.booleanField("default_open")],onChange:e=>{n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}]):""}
+        ${"manual"===(u.open_mode||"manual")?this.renderSettingsSection((0,s.kg)("editor.accordion.state.section_title",_,"Default State"),(0,s.kg)("editor.accordion.state.section_desc",_,"Configure whether this accordion starts open or closed when the card loads."),[{title:(0,s.kg)("editor.accordion.state.default_open",_,"Open by Default"),description:(0,s.kg)("editor.accordion.state.default_open_desc",_,"When enabled, the accordion will be expanded when the card initially loads."),hass:t,data:{default_open:u.default_open||!1},schema:[this.booleanField("default_open")],onChange:e=>{n(e.detail.value),setTimeout(()=>{this.triggerPreviewUpdate()},50)}}]):""}
 
         <!-- Container Customization Section -->
         <div class="design-subsection">
@@ -309,7 +313,7 @@ export const __webpack_esm_ids__=[7861];export const __webpack_esm_modules__={25
             ></ultra-color-picker>
 
             <div>
-              ${this.renderSliderField((0,s.kg)("editor.accordion.design.content_border_width",_,"Border Width"),"",null!==(u=h.content_border_width)&&void 0!==u?u:0,0,0,5,1,e=>{const t=Object.assign(Object.assign({},h),{content_border_width:e});n({design:t}),this.triggerPreviewUpdate()},"px")}
+              ${this.renderSliderField((0,s.kg)("editor.accordion.design.content_border_width",_,"Border Width"),"",null!==(p=h.content_border_width)&&void 0!==p?p:0,0,0,5,1,e=>{const t=Object.assign(Object.assign({},h),{content_border_width:e});n({design:t}),this.triggerPreviewUpdate()},"px")}
             </div>
           </div>
         </div>
@@ -460,59 +464,68 @@ export const __webpack_esm_ids__=[7861];export const __webpack_esm_modules__={25
               </div>
             `:""}
       </div>
-    `}_syncOutsideClickListener(e,t,o){const i=this.outsideClickCleanups.get(e);if(!o)return void(i&&(i(),this.outsideClickCleanups.delete(e)));if(i)return;const n=o=>{o.composedPath().some(e=>{var o;return e instanceof Element&&(null===(o=e.classList)||void 0===o?void 0:o.contains(t))})||(document.removeEventListener("pointerdown",n,!0),this.outsideClickCleanups.delete(e),this.accordionStates.get(e)&&(this.accordionStates.set(e,!1),this.triggerPreviewUpdate(!0)))};document.addEventListener("pointerdown",n,!0),this.outsideClickCleanups.set(e,()=>document.removeEventListener("pointerdown",n,!0))}renderPreview(e,t,o,n){var r,a,l,c,g,u,p,_;const h=e,v=h,m=v.design||{},b=(null===(r=null==t?void 0:t.locale)||void 0===r?void 0:r.language)||"en",y=this.buildStyleString(this.buildDesignStyles(e,t)),x=this.getHoverEffectClass(e),w=h.open_mode||"manual";let k=null;"always"===w?k=!0:"every"!==w&&"any"!==w||(d.S.setHass(t),k=d.S.evaluateDisplayConditions(h.open_conditions||[],w));const f=h.default_open||!1,$=this.accordionInitConfigs.get(h.id);if(!$||$.defaultOpen===f&&$.openMode===w||(this.accordionStates.delete(h.id),this.accordionLogicStates.delete(h.id)),this.accordionInitConfigs.set(h.id,{defaultOpen:f,openMode:w}),this.accordionStates.has(h.id))null!==k&&this.accordionLogicStates.get(h.id)!==k&&this.accordionStates.set(h.id,k);else{const e=null!==k?k:f;this.accordionStates.set(h.id,e)}this.accordionLogicStates.set(h.id,k);const C=this.accordionStates.get(h.id)||!1,S="overlay"===(h.expand_style||"push"),O=h.expand_direction||"down",P="up"===O||"auto"===O&&"up"===this.accordionResolvedDirections.get(h.id);let j="";if("entity"===h.title_mode&&h.title_entity){const e=this.resolveEntity(h.title_entity,o)||h.title_entity,i=null==t?void 0:t.states[e],n=(null===(a=null==i?void 0:i.attributes)||void 0===a?void 0:a.friendly_name)||e.split(".")[1]||e,r=(null==i?void 0:i.state)||e;j=h.show_entity_name?`${n}: ${r}`:r}else j=h.title_text||(0,s.kg)("editor.accordion.preview.title_fallback",b,"Accordion Title");const F=h.icon||"mdi:chevron-down",z=h.header_alignment||"apart",T=h.icon_side||"right";let U="space-between",E=1,B=2;"center"===z?(U="center","left"===T?(E=2,B=1):(E=1,B=2)):(U="space-between","left"===T?(E=2,B=1):(E=1,B=2));const D=null!==(l=m.container_border_width)&&void 0!==l?l:1,A=m.container_border_color||"var(--divider-color)",q=null!==(c=m.container_border_radius)&&void 0!==c?c:8,L=m.container_background_color||"var(--uc-pane-bg, var(--card-background-color))",H={border:`${D}px solid ${A}`,borderRadius:`${q}px`,overflow:S?"visible":"hidden",position:"relative",display:"flex",flexDirection:!S&&P?"column-reverse":"column",background:L,boxShadow:m.container_shadow||"none"},M=null!==(g=m.header_padding)&&void 0!==g?g:12,V=null!==(u=m.header_border_width)&&void 0!==u?u:1,I=m.header_border_color||"var(--divider-color)",R={display:"flex",alignItems:"center",justifyContent:U,padding:`${M}px 16px`,cursor:"pointer",background:m.header_background_color||"var(--uc-pane-bg, var(--card-background-color))",color:m.header_text_color||"var(--primary-text-color)",fontSize:m.header_font_size?`${m.header_font_size}px`:"16px",fontWeight:m.header_font_weight||"normal",transition:"background 0.2s",userSelect:"none",gap:"center"===z?"8px":"0"};R[!S&&P?"borderTop":"borderBottom"]=`${V}px solid ${I}`;const W=null!==(p=m.content_border_width)&&void 0!==p?p:0,N=m.content_border_color||"transparent",G=m.content_background_color||"transparent",J={maxHeight:C?"10000px":"0",overflow:C?"visible":"hidden",transition:"max-height 0.3s ease-in-out, padding 0.3s ease-in-out",background:G,padding:C?`${m.content_padding||16}px`:"0",borderTop:W>0?`${W}px solid ${N}`:"none"};S&&Object.assign(J,{position:"absolute",left:"0",right:"0",[P?"bottom":"top"]:"100%",[P?"marginBottom":"marginTop"]:"4px",zIndex:"1000",background:"transparent"!==G?G:L,borderRadius:`${q}px`,border:C?`${D}px solid ${A}`:"none",boxShadow:C?m.container_shadow||"0 4px 16px rgba(0, 0, 0, 0.25)":"none"});const Y=null!==(_=m.icon_size)&&void 0!==_?_:24,Z={transform:C?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.3s ease",order:B,flexShrink:0,color:m.icon_color||"inherit"},K={order:E,flexShrink:"apart"===z?1:0,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},Q=m.header_hover_color||"rgba(var(--rgb-primary-color), 0.1)",X=this.createGestureHandlers(h.id,{tap_action:h.tap_action,hold_action:h.hold_action,double_tap_action:h.double_tap_action,entity:h.entity,module:h},t,o),ee=e=>!!e&&"nothing"!==e.action&&"default"!==e.action,te=ee(h.tap_action)||ee(h.hold_action)||ee(h.double_tap_action),oe=e=>e.stopPropagation(),ie=e=>{var t;e.stopPropagation();const o=this.accordionStates.get(h.id)||!1;if(!o&&"auto"===O){const o=e.currentTarget,i=null===(t=null==o?void 0:o.getBoundingClientRect)||void 0===t?void 0:t.call(o),n="undefined"!=typeof window?window.innerHeight:0;this.accordionResolvedDirections.set(h.id,i&&n&&i.top+i.height/2>n/2?"up":"down")}this.accordionStates.set(h.id,!o),this.triggerPreviewUpdate(!0)},ne=h.modules&&h.modules.length>0,re=`accordion-${h.id.replace(/[^a-zA-Z0-9]/g,"")}`;return this._syncOutsideClickListener(h.id,re,C&&!!h.close_on_outside_click),this.wrapWithAnimation(i.qy`
+    `}_syncOutsideClickListener(e,t,o){const i=this.outsideClickCleanups.get(e);if(!o)return void(i&&(i(),this.outsideClickCleanups.delete(e)));if(i)return;const n=o=>{o.composedPath().some(e=>{var o;return e instanceof Element&&(null===(o=e.classList)||void 0===o?void 0:o.contains(t))})||(document.removeEventListener("pointerdown",n,!0),this.outsideClickCleanups.delete(e),this.accordionStates.get(e)&&(this.accordionStates.set(e,!1),this.triggerPreviewUpdate(!0)))};document.addEventListener("pointerdown",n,!0),this.outsideClickCleanups.set(e,()=>document.removeEventListener("pointerdown",n,!0))}renderPreview(e,t,o,n){var r,a,l,c,g,p,u,_,h;const v=e,m=v,b=m.design||{},y=(null===(r=null==t?void 0:t.locale)||void 0===r?void 0:r.language)||"en",x=this.buildStyleString(this.buildDesignStyles(e,t)),w=this.getHoverEffectClass(e),k=v.open_mode||"manual";let f=null;"always"===k?f=!0:"every"!==k&&"any"!==k||(d.S.setHass(t),f=d.S.evaluateDisplayConditions(v.open_conditions||[],k));const $=v.default_open||!1,C=this.accordionInitConfigs.get(v.id);if(!C||C.defaultOpen===$&&C.openMode===k||(this.accordionStates.delete(v.id),this.accordionLogicStates.delete(v.id)),this.accordionInitConfigs.set(v.id,{defaultOpen:$,openMode:k}),this.accordionStates.has(v.id))null!==f&&this.accordionLogicStates.get(v.id)!==f&&this.accordionStates.set(v.id,f);else{const e=null!==f?f:$;this.accordionStates.set(v.id,e)}this.accordionLogicStates.set(v.id,f);const S=this.accordionStates.get(v.id)||!1,O="overlay"===(v.expand_style||"push"),P=v.expand_direction||"down",j="up"===P||"auto"===P&&"up"===this.accordionResolvedDirections.get(v.id);let F="";if("entity"===v.title_mode&&v.title_entity){const e=this.resolveEntity(v.title_entity,o)||v.title_entity,i=null==t?void 0:t.states[e],n=(null===(a=null==i?void 0:i.attributes)||void 0===a?void 0:a.friendly_name)||e.split(".")[1]||e,r=(null==i?void 0:i.state)||e;F=v.show_entity_name?`${n}: ${r}`:r}else F=v.title_text||(0,s.kg)("editor.accordion.preview.title_fallback",y,"Accordion Title");const z=(null===(l=v.title_icon)||void 0===l?void 0:l.trim())||"",T=v.icon||"mdi:chevron-down",U=v.header_alignment||"apart",E=v.icon_side||"right";let B="space-between",D=1,A=2;"center"===U?(B="center","left"===E?(D=2,A=1):(D=1,A=2)):(B="space-between","left"===E?(D=2,A=1):(D=1,A=2));const q=null!==(c=b.container_border_width)&&void 0!==c?c:1,L=b.container_border_color||"var(--divider-color)",H=null!==(g=b.container_border_radius)&&void 0!==g?g:8,I=b.container_background_color||"var(--uc-pane-bg, var(--card-background-color))",M={border:`${q}px solid ${L}`,borderRadius:`${H}px`,overflow:O?"visible":"hidden",position:"relative",display:"flex",flexDirection:!O&&j?"column-reverse":"column",background:I,boxShadow:b.container_shadow||"none"},V=null!==(p=b.header_padding)&&void 0!==p?p:12,R=null!==(u=b.header_border_width)&&void 0!==u?u:1,W=b.header_border_color||"var(--divider-color)",N={display:"flex",alignItems:"center",justifyContent:B,padding:`${V}px 16px`,cursor:"pointer",background:b.header_background_color||"var(--uc-pane-bg, var(--card-background-color))",color:b.header_text_color||"var(--primary-text-color)",fontSize:b.header_font_size?`${b.header_font_size}px`:"16px",fontWeight:b.header_font_weight||"normal",transition:"background 0.2s",userSelect:"none",gap:"center"===U?"8px":"0"};N[!O&&j?"borderTop":"borderBottom"]=`${R}px solid ${W}`;const G=null!==(_=b.content_border_width)&&void 0!==_?_:0,J=b.content_border_color||"transparent",Y=b.content_background_color||"transparent",Z={maxHeight:S?"10000px":"0",overflow:S?"visible":"hidden",transition:"max-height 0.3s ease-in-out, padding 0.3s ease-in-out",background:Y,padding:S?`${b.content_padding||16}px`:"0",borderTop:G>0?`${G}px solid ${J}`:"none"};O&&Object.assign(Z,{position:"absolute",left:"0",right:"0",[j?"bottom":"top"]:"100%",[j?"marginBottom":"marginTop"]:"4px",zIndex:"1000",background:"transparent"!==Y?Y:I,borderRadius:`${H}px`,border:S?`${q}px solid ${L}`:"none",boxShadow:S?b.container_shadow||"0 4px 16px rgba(0, 0, 0, 0.25)":"none"});const K=null!==(h=b.icon_size)&&void 0!==h?h:24,Q={transform:S?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.3s ease",order:A,flexShrink:0,color:b.icon_color||"inherit"},X={order:D,flexShrink:"apart"===U?1:0,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},ee=b.header_hover_color||"rgba(var(--rgb-primary-color), 0.1)",te=this.createGestureHandlers(v.id,{tap_action:v.tap_action,hold_action:v.hold_action,double_tap_action:v.double_tap_action,entity:v.entity,module:v},t,o),oe=e=>!!e&&"nothing"!==e.action&&"default"!==e.action,ie=oe(v.tap_action)||oe(v.hold_action)||oe(v.double_tap_action),ne=e=>e.stopPropagation(),re=e=>{var t;e.stopPropagation();const o=this.accordionStates.get(v.id)||!1;if(!o&&"auto"===P){const o=e.currentTarget,i=null===(t=null==o?void 0:o.getBoundingClientRect)||void 0===t?void 0:t.call(o),n="undefined"!=typeof window?window.innerHeight:0;this.accordionResolvedDirections.set(v.id,i&&n&&i.top+i.height/2>n/2?"up":"down")}this.accordionStates.set(v.id,!o),this.triggerPreviewUpdate(!0)},ae=v.modules&&v.modules.length>0,de=`accordion-${v.id.replace(/[^a-zA-Z0-9]/g,"")}`;return this._syncOutsideClickListener(v.id,de,S&&!!v.close_on_outside_click),this.wrapWithAnimation(i.qy`
       <style>
-        .${re} .ultra-accordion-header:hover {
-          background: ${Q} !important;
+        .${de} .ultra-accordion-header:hover {
+          background: ${ee} !important;
         }
       </style>
       <div
-        class="ultra-accordion-container ${x} ${re}"
+        class="ultra-accordion-container ${w} ${de}"
         data-uc-role="pane"
-        style="${this.buildStyleString(H)}; ${y}${te?"; cursor: pointer":""}"
-        @pointerdown=${te?X.onPointerDown:null}
-        @pointermove=${te?X.onPointerMove:null}
-        @pointerup=${te?X.onPointerUp:null}
-        @pointercancel=${te?X.onPointerCancel:null}
-        @pointerleave=${te?X.onPointerLeave:null}
+        style="${this.buildStyleString(M)}; ${x}${ie?"; cursor: pointer":""}"
+        @pointerdown=${ie?te.onPointerDown:null}
+        @pointermove=${ie?te.onPointerMove:null}
+        @pointerup=${ie?te.onPointerUp:null}
+        @pointercancel=${ie?te.onPointerCancel:null}
+        @pointerleave=${ie?te.onPointerLeave:null}
       >
         <!-- Accordion Header -->
         <div
           class="ultra-accordion-header"
-          style="${this.buildStyleString(R)}"
+          style="${this.buildStyleString(N)}"
           role="button"
           tabindex="0"
-          aria-expanded="${C}"
-          aria-label="${j}${C?", expanded":", collapsed"}"
-          @pointerdown=${te?oe:null}
-          @pointerup=${te?oe:null}
-          @click=${ie}
-          @keydown=${e=>{"Enter"!==e.key&&" "!==e.key||(e.preventDefault(),ie(e))}}
+          aria-expanded="${S}"
+          aria-label="${F}${S?", expanded":", collapsed"}"
+          @pointerdown=${ie?ne:null}
+          @pointerup=${ie?ne:null}
+          @click=${re}
+          @keydown=${e=>{"Enter"!==e.key&&" "!==e.key||(e.preventDefault(),re(e))}}
         >
           <!-- Title -->
-          <span class="ultra-accordion-title" style="${this.buildStyleString(K)}"
-            >${j}</span
-          >
+          ${z?i.qy`<span
+                class="ultra-accordion-title ultra-accordion-title--with-icon"
+                style="${this.buildStyleString(Object.assign(Object.assign({},X),{display:"flex",alignItems:"center",gap:"8px"}))}"
+              >
+                <ha-icon
+                  icon="${z}"
+                  style="flex-shrink: 0; --mdc-icon-size: 1.25em; color: ${v.title_icon_color||"inherit"};"
+                ></ha-icon>
+                <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">${F}</span>
+              </span>`:i.qy`<span class="ultra-accordion-title" style="${this.buildStyleString(X)}"
+                >${F}</span
+              >`}
 
           <!-- Control Icon (Chevron) -->
           <ha-icon
-            icon="${F}"
-            style="${this.buildStyleString(Z)}; --mdc-icon-size: ${Y}px;"
+            icon="${T}"
+            style="${this.buildStyleString(Q)}; --mdc-icon-size: ${K}px;"
           ></ha-icon>
         </div>
 
         <!-- Accordion Content -->
-        <div class="ultra-accordion-content" style="${this.buildStyleString(J)}">
-          ${C&&ne?h.modules.map(e=>this._renderAccordionChild(e,t,v,o,n)):C&&!ne?i.qy`
+        <div class="ultra-accordion-content" style="${this.buildStyleString(Z)}">
+          ${S&&ae?v.modules.map(e=>this._renderAccordionChild(e,t,m,o,n)):S&&!ae?i.qy`
                   <div
                     style="padding: 24px; text-align: center; color: var(--secondary-text-color); font-style: italic;"
                   >
-                    ${(0,s.kg)("editor.accordion.preview.no_modules",b,"No modules added. Add modules to this accordion in the Layout tab.")}
+                    ${(0,s.kg)("editor.accordion.preview.no_modules",y,"No modules added. Add modules to this accordion in the Layout tab.")}
                   </div>
                 `:""}
         </div>
       </div>
-    `,e,t)}_renderAccordionChild(e,t,o,n,s){var u,p,_,h,v,m,b,y,x,w,k,f;const $=(0,a.oD)().getModule(e.type);if(!$)return c.E.renderModuleLoadingState(e);const C=this.applyLayoutDesignToChild(e,o);d.S.setHass(t);const S=C,O=d.S.evaluateModuleVisibility(C),P=d.S.evaluateLogicProperties({logic_entity:null===(u=null==S?void 0:S.design)||void 0===u?void 0:u.logic_entity,logic_attribute:null===(p=null==S?void 0:S.design)||void 0===p?void 0:p.logic_attribute,logic_operator:null===(_=null==S?void 0:S.design)||void 0===_?void 0:_.logic_operator,logic_value:null===(h=null==S?void 0:S.design)||void 0===h?void 0:h.logic_value});if(!O||!P)return i.qy``;const j=(null===(m=null===(v=$.metadata)||void 0===v?void 0:v.tags)||void 0===m?void 0:m.includes("pro"))||(null===(y=null===(b=$.metadata)||void 0===b?void 0:b.tags)||void 0===y?void 0:y.includes("premium"))||!1;let F=!1;const z=l.xd.checkIntegrationAuth(t);if("pro"===(null===(x=null==z?void 0:z.subscription)||void 0===x?void 0:x.tier)&&"active"===(null===(w=null==z?void 0:z.subscription)||void 0===w?void 0:w.status))F=!0;else if(l.xd.isAuthenticated()){const e=l.xd.getCurrentUser();"pro"===(null===(k=null==e?void 0:e.subscription)||void 0===k?void 0:k.tier)&&"active"===(null===(f=null==e?void 0:e.subscription)||void 0===f?void 0:f.status)&&(F=!0)}if(j&&!F)return i.qy`
+    `,e,t)}_renderAccordionChild(e,t,o,n,s){var p,u,_,h,v,m,b,y,x,w,k,f;const $=(0,a.oD)().getModule(e.type);if(!$)return c.E.renderModuleLoadingState(e);const C=this.applyLayoutDesignToChild(e,o);d.S.setHass(t);const S=C,O=d.S.evaluateModuleVisibility(C),P=d.S.evaluateLogicProperties({logic_entity:null===(p=null==S?void 0:S.design)||void 0===p?void 0:p.logic_entity,logic_attribute:null===(u=null==S?void 0:S.design)||void 0===u?void 0:u.logic_attribute,logic_operator:null===(_=null==S?void 0:S.design)||void 0===_?void 0:_.logic_operator,logic_value:null===(h=null==S?void 0:S.design)||void 0===h?void 0:h.logic_value});if(!O||!P)return i.qy``;const j=(null===(m=null===(v=$.metadata)||void 0===v?void 0:v.tags)||void 0===m?void 0:m.includes("pro"))||(null===(y=null===(b=$.metadata)||void 0===b?void 0:b.tags)||void 0===y?void 0:y.includes("premium"))||!1;let F=!1;const z=l.xd.checkIntegrationAuth(t);if("pro"===(null===(x=null==z?void 0:z.subscription)||void 0===x?void 0:x.tier)&&"active"===(null===(w=null==z?void 0:z.subscription)||void 0===w?void 0:w.status))F=!0;else if(l.xd.isAuthenticated()){const e=l.xd.getCurrentUser();"pro"===(null===(k=null==e?void 0:e.subscription)||void 0===k?void 0:k.tier)&&"active"===(null===(f=null==e?void 0:e.subscription)||void 0===f?void 0:f.status)&&(F=!0)}if(j&&!F)return i.qy`
         <div
           style="padding: 16px; text-align: center; color: var(--secondary-text-color); font-style: italic; background: rgba(var(--rgb-warning-color), 0.1); border: 1px dashed var(--warning-color); border-radius: var(--uc-r-8, 8px); margin: 8px 0;"
         >

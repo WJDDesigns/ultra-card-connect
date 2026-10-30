@@ -4,6 +4,20 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ## [Unreleased]
 
+## [1.12.2] - 2026-10-30
+
+Gets RSS feeds through from more sites that turn away Home Assistant, and brings the bundled Hub up to Ultra Card 3.14.3-beta5. Nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant.
+
+### 🐛 Bug Fixes
+
+- **Some RSS feeds still wouldn't load** - A few sites (for example hessenschau.de) still turned feed requests away. When a site refuses, Connect now tries again with a fuller browser request and then as a feed reader before giving up. Thanks to larrysansan for the report
+
+### 🔧 Improvements
+
+- **Updated the bundled Hub to Ultra Card 3.14.3-beta5** - The Hub now matches the latest Ultra Card beta
+
 ## [1.12.1] - 2026-10-28
 
 Fixes RSS feeds from news sites that turn away Home Assistant, and brings the bundled Hub up to Ultra Card 3.14.3-beta3. Nothing needs to be reconfigured.
