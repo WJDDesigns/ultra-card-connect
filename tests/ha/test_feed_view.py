@@ -79,3 +79,33 @@ async def test_blocked_feed_is_retried_with_other_identities(
     assert data["status"] == 403
     # Default browser identity, then each fallback identity once.
     assert aioclient_mock.call_count == 3
+
+
+async def test_reads_the_whole_feed_when_it_arrives_in_pieces(
+    hass, view, hass_client, aioclient_mock
+) -> None:
+    """A single read() returns only what has arrived; the view must keep reading."""
+    from unittest.mock import patch
+
+    from pytest_homeassistant_custom_component.test_util import aiohttp as mock_http
+
+    items = "".join(f"<item><title>Item {i}</title></item>" for i in range(400))
+    big = f'<?xml version="1.0"?><rss version="2.0"><channel>{items}</channel></rss>'
+    aioclient_mock.get(FEED_URL, text=big)
+
+    class Trickle:
+        """Hands out at most 1000 bytes per read, like a slow network."""
+
+        def __init__(self, data: bytes) -> None:
+            self._data = data
+
+        async def read(self, n: int = -1) -> bytes:
+            size = 1000 if n is None or n < 0 else min(n, 1000)
+            chunk, self._data = self._data[:size], self._data[size:]
+            return chunk
+
+    client = await hass_client()
+    with patch.object(mock_http, "mock_stream", Trickle):
+        data = await (await client.get(URL, params={"url": FEED_URL})).json()
+    assert data["ok"] is True
+    assert data["body"] == big

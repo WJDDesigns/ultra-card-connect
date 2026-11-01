@@ -1013,7 +1013,17 @@ class UltraCardFeedView(HomeAssistantView):
                         return self.json(
                             {"ok": False, "status": resp.status, "content_type": content_type, "body": ""}
                         )
-                    raw = await resp.content.read(FEED_MAX_BYTES + 1)
+                    # read(n) only returns what has arrived so far, so keep reading
+                    # until the end or the size limit (a single read cut feeds off
+                    # after the first few KB).
+                    stream = resp.content
+                    buf = bytearray()
+                    while len(buf) <= FEED_MAX_BYTES:
+                        chunk = await stream.read(FEED_MAX_BYTES + 1 - len(buf))
+                        if not chunk:
+                            break
+                        buf.extend(chunk)
+                    raw = bytes(buf)
                     if len(raw) > FEED_MAX_BYTES:
                         return self.json({"ok": False, "status": 413, "content_type": content_type, "body": ""})
                     text = decode_feed_bytes(raw, content_type)
