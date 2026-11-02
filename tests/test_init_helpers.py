@@ -117,3 +117,11 @@ def test_decode_feed_bytes() -> None:
     assert "Grüße" in helpers.decode_feed_bytes(b"\xef\xbb\xbf" + utf, "")
     assert "Grüße" in helpers.decode_feed_bytes(utf, "text/xml; charset=bogus-charset")
     assert "Mozilla/5.0" in helpers.FEED_REQUEST_HEADERS["User-Agent"]
+
+
+def test_feed_request_url_keeps_existing_encoding() -> None:
+    url = helpers.feed_request_url("https://www.pcwelt.de/feed?story_types=news%2Cfeature")
+    assert str(url) == "https://www.pcwelt.de/feed?story_types=news%2Cfeature"
+    assert str(helpers.feed_request_url("https://example.com/a b")) == "https://example.com/a%20b"
+    assert str(helpers.feed_request_url("https://example.com/50%off")) == "https://example.com/50%25off"
+    assert str(helpers.feed_request_url("https://example.com/f?a=1&b=2")) == "https://example.com/f?a=1&b=2"

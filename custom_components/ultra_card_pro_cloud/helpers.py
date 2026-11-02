@@ -336,6 +336,26 @@ def feed_url_problem(url: str) -> str | None:
     return None
 
 
+def feed_request_url(url: str):
+    """The URL to request, sent exactly as written when it is already encoded.
+
+    aiohttp normally re-encodes URLs and turns "%2C" back into ",". Some sites
+    (PC-WELT's WordPress feed) redirect "?story_types=news,feature" to the
+    "%2C" spelling, so the fetch loops on that redirect until it gives up.
+    URLs with spaces or other characters that need encoding are left to yarl.
+    """
+    from yarl import URL
+
+    if url.isascii() and not re.search(r"[\s<>\"{}|\\^`]", url) and not re.search(
+        r"%(?![0-9A-Fa-f]{2})", url
+    ):
+        try:
+            return URL(url, encoded=True)
+        except ValueError:
+            pass
+    return URL(url)
+
+
 def is_private_address(address: str) -> bool:
     """True for loopback, private, link-local and other non-public IPs."""
     import ipaddress
