@@ -124,3 +124,13 @@ async def test_already_encoded_urls_are_sent_as_written(
     assert data["ok"] is True
     assert aioclient_mock.call_count == 1
     assert str(aioclient_mock.mock_calls[0][1]) == raw
+
+
+def test_feed_request_url_keeps_existing_encoding() -> None:
+    from custom_components.ultra_card_pro_cloud.helpers import feed_request_url
+
+    url = feed_request_url("https://www.pcwelt.de/feed?story_types=news%2Cfeature")
+    assert str(url) == "https://www.pcwelt.de/feed?story_types=news%2Cfeature"
+    assert str(feed_request_url("https://example.com/a b")) == "https://example.com/a%20b"
+    assert str(feed_request_url("https://example.com/50%off")) == "https://example.com/50%25off"
+    assert str(feed_request_url("https://example.com/f?a=1&b=2")) == "https://example.com/f?a=1&b=2"
