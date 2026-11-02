@@ -109,3 +109,28 @@ async def test_reads_the_whole_feed_when_it_arrives_in_pieces(
         data = await (await client.get(URL, params={"url": FEED_URL})).json()
     assert data["ok"] is True
     assert data["body"] == big
+
+
+async def test_already_encoded_urls_are_sent_as_written(
+    hass, view, hass_client, aioclient_mock
+) -> None:
+    """PC-WELT redirects "news,feature" to "news%2Cfeature"; re-encoding looped."""
+    from yarl import URL as YarlURL
+
+    raw = "https://93.184.216.34/feed?story_types=news%2Cfeature"
+    aioclient_mock.get(YarlURL(raw, encoded=True), text=FEED)
+    client = await hass_client()
+    data = await (await client.get(URL, params={"url": raw})).json()
+    assert data["ok"] is True
+    assert aioclient_mock.call_count == 1
+    assert str(aioclient_mock.mock_calls[0][1]) == raw
+
+
+def test_feed_request_url_keeps_existing_encoding() -> None:
+    from custom_components.ultra_card_pro_cloud.helpers import feed_request_url
+
+    url = feed_request_url("https://www.pcwelt.de/feed?story_types=news%2Cfeature")
+    assert str(url) == "https://www.pcwelt.de/feed?story_types=news%2Cfeature"
+    assert str(feed_request_url("https://example.com/a b")) == "https://example.com/a%20b"
+    assert str(feed_request_url("https://example.com/50%off")) == "https://example.com/50%25off"
+    assert str(feed_request_url("https://example.com/f?a=1&b=2")) == "https://example.com/f?a=1&b=2"

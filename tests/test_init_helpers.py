@@ -117,3 +117,4 @@ def test_decode_feed_bytes() -> None:
     assert "Grüße" in helpers.decode_feed_bytes(b"\xef\xbb\xbf" + utf, "")
     assert "Grüße" in helpers.decode_feed_bytes(utf, "text/xml; charset=bogus-charset")
     assert "Mozilla/5.0" in helpers.FEED_REQUEST_HEADERS["User-Agent"]
+

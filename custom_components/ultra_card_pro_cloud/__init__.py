@@ -67,6 +67,7 @@ from .helpers import (
     FEED_REQUEST_HEADERS,
     FEED_TIMEOUT_SECONDS,
     decode_feed_bytes,
+    feed_request_url,
     feed_url_problem,
     is_private_address,
     normalize_smart_connector_preference,
@@ -996,7 +997,7 @@ class UltraCardFeedView(HomeAssistantView):
                 return self.json({"ok": False, "error": "private_address"}, status_code=403)
             try:
                 async with session.get(
-                    url,
+                    feed_request_url(url),
                     headers=headers,
                     allow_redirects=False,
                     timeout=aiohttp_timeout(FEED_TIMEOUT_SECONDS),
