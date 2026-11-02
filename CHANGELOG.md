@@ -4,6 +4,20 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ## [Unreleased]
 
+## [1.12.4] - 2026-11-02
+
+Loads more RSS feeds, and brings the bundled Hub up to Ultra Card 3.14.3 stable. Nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant.
+
+### 🐛 Bug Fixes
+
+- **RSS feed addresses with encoded characters looped** - Connect rewrote characters such as `%2C` in a feed address, and sites like PC-WELT redirected back to the original spelling over and over until Connect gave up. Connect now sends the address exactly as written. Thanks to Wayne for the report
+
+### 🔧 Improvements
+
+- **Updated the bundled Hub to Ultra Card 3.14.3** - The Hub now matches the new stable Ultra Card release
+
 ## [1.12.3] - 2026-11-01
 
 Passes on whole RSS feeds instead of only the first part, and brings the bundled Hub up to Ultra Card 3.14.3-beta9. Nothing needs to be reconfigured.
