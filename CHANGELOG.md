@@ -4,6 +4,16 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ## [Unreleased]
 
+## [1.12.5] - 2026-11-16
+
+Brings the bundled Hub up to Ultra Card 3.14.4 stable. Nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant.
+
+### 🔧 Improvements
+
+- **Updated the bundled Hub to Ultra Card 3.14.4** - The module "?" documentation button in the card editor now opens that module's page in the Hub, and withdrawing or deleting a preset or other Hub actions use Ultra Card's own confirmation dialog instead of the browser's
+
 ## [1.12.4] - 2026-11-02
 
 Loads more RSS feeds, and brings the bundled Hub up to Ultra Card 3.14.3 stable. Nothing needs to be reconfigured.
