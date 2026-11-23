@@ -4,6 +4,20 @@ All notable changes to Ultra Card Connect will be documented in this file.
 
 ## [Unreleased]
 
+## [1.12.6] - 2026-11-23
+
+Brings the bundled Hub up to Ultra Card 3.14.6 stable. Nothing needs to be reconfigured.
+
+**After updating:** restart Home Assistant.
+
+### 🔒 Security
+
+- **Your Home Assistant login stays on Home Assistant** - The bundled Hub no longer reads your Home Assistant login. Image uploads go through Home Assistant's own authenticated requests, which only talk to your Home Assistant. This clears the warning from the Barkley Marketplace scanner
+
+### 🔧 Improvements
+
+- **Updated the bundled Hub to Ultra Card 3.14.6** - The Hub sign-in dialog works with Home Assistant's new Web Awesome look, icon buttons have names, and the Hub loads less translation text
+
 ## [1.12.5] - 2026-11-16
 
 Brings the bundled Hub up to Ultra Card 3.14.4 stable. Nothing needs to be reconfigured.
